@@ -1,0 +1,25 @@
+{
+    "ROS2.distro": "jazzy",
+    "python.autoComplete.extraPaths": [
+        "/home/nathanaelss/dev/gamaforce/Khageswara-Vision/build/system",
+        "/home/nathanaelss/dev/gamaforce/Khageswara-Vision/install/system/lib/python3.12/site-packages",
+        "/home/nathanaelss/dev/gamaforce/Khageswara-Vision/build/preception",
+        "/home/nathanaelss/dev/gamaforce/Khageswara-Vision/install/preception/lib/python3.12/site-packages",
+        "/home/nathanaelss/dev/gamaforce/Khageswara-Vision/build/mavbridge",
+        "/home/nathanaelss/dev/gamaforce/Khageswara-Vision/install/mavbridge/lib/python3.12/site-packages",
+        "/home/nathanaelss/dev/gamaforce/Khageswara-Vision/build/control",
+        "/home/nathanaelss/dev/gamaforce/Khageswara-Vision/install/control/lib/python3.12/site-packages",
+        "/opt/ros/jazzy/lib/python3.12/site-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "/home/nathanaelss/dev/gamaforce/Khageswara-Vision/build/system",
+        "/home/nathanaelss/dev/gamaforce/Khageswara-Vision/install/system/lib/python3.12/site-packages",
+        "/home/nathanaelss/dev/gamaforce/Khageswara-Vision/build/preception",
+        "/home/nathanaelss/dev/gamaforce/Khageswara-Vision/install/preception/lib/python3.12/site-packages",
+        "/home/nathanaelss/dev/gamaforce/Khageswara-Vision/build/mavbridge",
+        "/home/nathanaelss/dev/gamaforce/Khageswara-Vision/install/mavbridge/lib/python3.12/site-packages",
+        "/home/nathanaelss/dev/gamaforce/Khageswara-Vision/build/control",
+        "/home/nathanaelss/dev/gamaforce/Khageswara-Vision/install/control/lib/python3.12/site-packages",
+        "/opt/ros/jazzy/lib/python3.12/site-packages"
+    ]
+}
