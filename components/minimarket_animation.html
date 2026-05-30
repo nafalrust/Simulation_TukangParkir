@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0f172a; overflow: hidden; font-family: 'Inter', monospace; }
+    canvas { display: block; }
+
+    #controls {
+      display: flex; align-items: center; gap: 12px;
+      padding: 6px 14px; background: #0f172a; border-top: 1px solid #334155;
+    }
+    #controls button {
+      background: #334155; color: #f1f5f9; border: none;
+      padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 13px;
+    }
+    #controls button:hover { background: #3b82f6; }
+    #controls button.active { background: #3b82f6; }
+    #controls label { color: #94a3b8; font-size: 12px; }
+    #controls input[type=range] { width: 80px; accent-color: #3b82f6; }
+    #day-label { color: #f1f5f9; font-size: 12px; min-width: 60px; }
+  </style>
+</head>
+<body>
+
+  <!-- Data injection — Python mengganti string literal ini -->
+  <script>
+    const abmDaily   = '__ABM_DAILY__';
+    const agentData  = '__AGENTS__';
+    const dcmResults = '__DCM__';
+    const simConfig  = '__CONFIG__';
+  </script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+
+  <div id="controls">
+    <button id="btn-rewind" title="Ke awal">&#9664;&#9664;</button>
+    <button id="btn-play" class="active">&#9654; Play</button>
+    <button id="btn-end" title="Ke akhir">&#9654;&#9654;</button>
+    <label>Speed:</label>
+    <input type="range" id="speed-slider" min="1" max="8" value="2">
+    <label>Hari:</label>
+    <input type="range" id="day-slider" min="0" value="0">
+    <span id="day-label">Hari 1</span>
+  </div>
+
+  <script>
+  // ════════════════════════════════════════════════════════════
+  // DATA DUMMY — digunakan saat file dibuka standalone di browser
+  // ════════════════════════════════════════════════════════════
+  if (typeof abmDaily === 'string') {
+    window.abmDaily = Array.from({length: 60}, (_, i) => ({
+      day: i + 1,
+      visits_a: Math.round(70 - i * 0.4 + Math.sin(i * 0.3) * 5),
+      visits_b: Math.round(40 + i * 0.3 + Math.sin(i * 0.3 + 2) * 3),
+      no_buy:   10,
+      bad_experiences: Math.round(8 + Math.sin(i) * 3),
+      wom_messages:    Math.round(5 + Math.cos(i) * 2),
+      avg_parking_aversion: 0.4 + i * 0.004,
+      revenue_a: Math.round(2000000 - i * 8000),
+      revenue_b: Math.round(1400000 + i * 6000)
+    }));
+    window.agentData = Array.from({length: 200}, (_, i) => ({
+      id: i,
+      x: Math.sin(i * 1.7) * 0.85 * 500,
+      y: Math.cos(i * 2.3) * 0.85 * 500,
+      choice: i % 3 === 0 ? 'none' : i % 2 === 0 ? 'A' : 'B',
+      parking_aversion: (i % 10) / 10,
+      had_negative_experience: i % 12 === 0
+    }));
+    window.dcmResults = {
+      beta_distance: -1.0, beta_parking: -1.0, beta_fee_ratio: -2.0,
+      attractiveness_A: 0.5, attractiveness_B: 0.5,
+      parking_fee: 2000, distance_to_B: 1000
+    };
+    window.simConfig = {
+      n_agents: 200, n_days: 60, market_radius: 500,
+      store_a_x: 0, store_a_y: 0,
+      store_b_x: 1000, store_b_y: 0
+    };
+  } else {
+    window.abmDaily   = abmDaily;
+    window.agentData  = agentData;
+    window.dcmResults = dcmResults;
+    window.simConfig  = simConfig;
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // STATE GLOBAL
+  // ════════════════════════════════════════════════════════════
+  let frame   = 0;
+  let playing = true;
+  let speed   = 2;
+  const N_DAYS = window.abmDaily.length;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const daySlider   = document.getElementById('day-slider');
+    const speedSlider = document.getElementById('speed-slider');
+    const btnPlay     = document.getElementById('btn-play');
+    const btnRewind   = document.getElementById('btn-rewind');
+    const btnEnd      = document.getElementById('btn-end');
+    const dayLabel    = document.getElementById('day-label');
+
+    daySlider.max = N_DAYS - 1;
+
+    btnPlay.onclick = () => {
+      playing = !playing;
+      btnPlay.innerHTML = playing ? '&#9646;&#9646; Pause' : '&#9654; Play';
+      btnPlay.className = playing ? 'active' : '';
+      if (playing && frame === N_DAYS - 1) frame = 0;
+    };
+    btnRewind.onclick = () => { frame = 0; playing = false; btnPlay.innerHTML = '&#9654; Play'; btnPlay.className = ''; };
+    btnEnd.onclick    = () => { frame = N_DAYS - 1; playing = false; btnPlay.innerHTML = '&#9654; Play'; btnPlay.className = ''; };
+
+    daySlider.oninput = () => {
+      frame = parseInt(daySlider.value);
+      playing = false;
+      btnPlay.innerHTML = '&#9654; Play';
+      btnPlay.className = '';
+    };
+    speedSlider.oninput = () => { speed = parseInt(speedSlider.value); };
+
+    setInterval(() => {
+      dayLabel.textContent = `Hari ${frame + 1}`;
+      daySlider.value = frame;
+    }, 100);
+  });
+
+  // ════════════════════════════════════════════════════════════
+  // p5.js SKETCH
+  // ════════════════════════════════════════════════════════════
+  new p5(function(p) {
+
+    const W = 720, H = 460;
+    const LEFT_W = 355, RIGHT_W = 365, MAP_H = 400, CHART_H = 400;
+    const PAD = 16;
+
+    const C = {
+      bg:          p.color('#0f172a'),
+      panelBg:     p.color('#1e293b'),
+      border:      p.color('#334155'),
+      agentA:      p.color('#ef4444'),
+      agentB:      p.color('#22c55e'),
+      agentNone:   p.color('#64748b'),
+      agentBadExp: p.color('#fbbf24'),
+      storeA:      p.color('#ef4444'),
+      storeB:      p.color('#22c55e'),
+      lineA:       p.color('#f87171'),
+      lineB:       p.color('#4ade80'),
+      lineAversion:p.color('#a78bfa'),
+      chartGrid:   p.color('#334155'),
+      textPri:     p.color('#f1f5f9'),
+      textSec:     p.color('#94a3b8'),
+      textAcc:     p.color('#38bdf8'),
+      hudBg:       p.color('#0f172a'),
+    };
+
+    let lastAdvance = 0;
+
+    p.setup = function() {
+      p.createCanvas(W, H);
+      p.frameRate(30);
+      p.textFont('monospace');
+    };
+
+    p.draw = function() {
+      p.background(C.bg);
+      const d = window.abmDaily[Math.min(frame, N_DAYS - 1)];
+      drawMapPanel(d);
+      drawChartPanel();
+      drawHUD(d);
+      drawDivider();
+
+      if (playing && p.millis() - lastAdvance > (800 / speed)) {
+        frame = Math.min(frame + 1, N_DAYS - 1);
+        lastAdvance = p.millis();
+        if (frame === N_DAYS - 1) playing = false;
+      }
+    };
+
+    function drawDivider() {
+      p.stroke(C.border);
+      p.strokeWeight(1);
+      p.line(LEFT_W, 0, LEFT_W, MAP_H);
+    }
+
+    // ── Panel Kiri: Peta Agen ─────────────────────────────────
+    function drawMapPanel(dayData) {
+      p.noStroke();
+      p.fill(C.panelBg);
+      p.rect(0, 0, LEFT_W, MAP_H);
+
+      p.fill(C.textSec);
+      p.noStroke();
+      p.textSize(10);
+      p.textAlign(p.LEFT, p.TOP);
+      p.text('PETA PELANGGAN', PAD, PAD);
+      p.fill(C.textAcc);
+      p.textAlign(p.RIGHT, p.TOP);
+      p.text(`Hari ${frame + 1} / ${N_DAYS}`, LEFT_W - PAD, PAD);
+
+      const cfg = window.simConfig;
+
+      // Garis penghubung dua toko
+      p.stroke(C.border);
+      p.strokeWeight(0.5);
+      p.drawingContext.setLineDash([4, 6]);
+      p.line(toCanvasX(cfg.store_a_x), toCanvasY(cfg.store_a_y),
+             toCanvasX(cfg.store_b_x), toCanvasY(cfg.store_b_y));
+      p.drawingContext.setLineDash([]);
+
+      // Gambar agen
+      const agents = window.agentData;
+      const d = dayData;
+      const total = (d.visits_a || 0) + (d.visits_b || 0) + (d.no_buy || 0);
+      const pA = total > 0 ? d.visits_a / total : 0.4;
+      const pB = total > 0 ? d.visits_b / total : 0.4;
+
+      for (let ag of agents) {
+        const px = toCanvasX(ag.x);
+        const py = toCanvasY(ag.y);
+
+        let col;
+        if (frame === N_DAYS - 1) {
+          col = ag.choice === 'A' ? C.agentA :
+                ag.choice === 'B' ? C.agentB : C.agentNone;
+        } else {
+          const r = fract(Math.sin(ag.id * 127.1 + frame * 311.7) * 43758.5453);
+          col = r < pA ? C.agentA : r < pA + pB ? C.agentB : C.agentNone;
+        }
+
+        // Ukuran titik ∝ parking_aversion
+        const av = ag.parking_aversion || 0;
+        const sz = 4 + av * 8;
+
+        if (frame === N_DAYS - 1 && ag.had_negative_experience) {
+          p.stroke(C.agentBadExp);
+          p.strokeWeight(1.5);
+        } else {
+          p.noStroke();
+        }
+        p.fill(col);
+        p.circle(px, py, sz);
+      }
+
+      drawStore(cfg.store_a_x, cfg.store_a_y, 'A (Jukir)', C.storeA);
+      drawStore(cfg.store_b_x, cfg.store_b_y, 'B', C.storeB);
+      drawMapLegend();
+    }
+
+    function drawStore(sx, sy, label, col) {
+      const px = toCanvasX(sx);
+      const py = toCanvasY(sy);
+      p.fill(col);
+      p.noStroke();
+      p.rect(px - 10, py - 10, 20, 20, 3);
+      p.fill(C.textPri);
+      p.textAlign(p.CENTER, p.BOTTOM);
+      p.textSize(9);
+      p.text(`Toko ${label}`, px, py - 13);
+    }
+
+    function drawMapLegend() {
+      const lx = PAD, ly = MAP_H - 58;
+      p.textSize(9);
+      p.textAlign(p.LEFT, p.CENTER);
+      const items = [
+        { col: C.agentA,    label: 'Pilih Toko A (ada jukir)' },
+        { col: C.agentB,    label: 'Pilih Toko B (tanpa jukir)' },
+        { col: C.agentNone, label: 'Tidak jadi beli' },
+      ];
+      items.forEach((item, i) => {
+        p.fill(item.col);
+        p.noStroke();
+        p.circle(lx + 5, ly + i * 14, 7);
+        p.fill(C.textSec);
+        p.text(item.label, lx + 14, ly + i * 14);
+      });
+    }
+
+    function toCanvasX(simX) {
+      const cfg = window.simConfig;
+      const minX = Math.min(cfg.store_a_x, cfg.store_b_x) - cfg.market_radius;
+      const maxX = Math.max(cfg.store_a_x, cfg.store_b_x) + cfg.market_radius;
+      return p.map(simX, minX, maxX, PAD + 8, LEFT_W - PAD - 8);
+    }
+    function toCanvasY(simY) {
+      const cfg = window.simConfig;
+      return p.map(simY, -cfg.market_radius, cfg.market_radius, MAP_H - PAD - 24, PAD + 24);
+    }
+    function fract(x) { return x - Math.floor(x); }
+
+    // ── Panel Kanan: Chart Time Series ───────────────────────
+    function drawChartPanel() {
+      p.noStroke();
+      p.fill(C.panelBg);
+      p.rect(LEFT_W, 0, RIGHT_W, CHART_H);
+
+      p.fill(C.textSec);
+      p.textSize(10);
+      p.textAlign(p.LEFT, p.TOP);
+      p.text('KUNJUNGAN HARIAN', LEFT_W + PAD, PAD);
+
+      const cx0 = LEFT_W + 38, cx1 = W - 10;
+      const cy0 = PAD + 20, cy1 = CHART_H - 44;
+      const cw = cx1 - cx0, ch = cy1 - cy0;
+
+      const allDays = window.abmDaily;
+      const maxV = Math.max(...allDays.map(d => Math.max(d.visits_a || 0, d.visits_b || 0))) * 1.2 || 100;
+
+      // Grid horizontal
+      p.stroke(C.chartGrid);
+      p.strokeWeight(0.5);
+      for (let i = 0; i <= 4; i++) {
+        const gy = cy0 + (ch / 4) * i;
+        p.line(cx0, gy, cx1, gy);
+        p.fill(C.textSec);
+        p.noStroke();
+        p.textSize(8);
+        p.textAlign(p.RIGHT, p.CENTER);
+        p.text(Math.round(maxV - (maxV / 4) * i), cx0 - 3, gy);
+      }
+
+      // Kunjungan A (merah)
+      plotLine(allDays, 'visits_a', maxV, cx0, cy0, cw, ch, C.lineA, false);
+      // Kunjungan B (hijau)
+      plotLine(allDays, 'visits_b', maxV, cx0, cy0, cw, ch, C.lineB, false);
+      // Avg Parking Aversion (ungu, putus-putus, axis [0,1])
+      p.drawingContext.setLineDash([5, 5]);
+      plotLine(allDays, 'avg_parking_aversion', 1, cx0, cy0, cw, ch, C.lineAversion, false);
+      p.drawingContext.setLineDash([]);
+
+      // Marker hari saat ini
+      if (frame < N_DAYS) {
+        const markerX = cx0 + (frame / Math.max(N_DAYS - 1, 1)) * cw;
+        p.stroke(p.color('#ffffff33'));
+        p.strokeWeight(1);
+        p.line(markerX, cy0, markerX, cy1);
+      }
+
+      // Label sumbu X
+      p.fill(C.textSec);
+      p.noStroke();
+      p.textSize(8);
+      p.textAlign(p.LEFT, p.TOP);
+      p.text('1', cx0, cy1 + 3);
+      p.textAlign(p.RIGHT, p.TOP);
+      p.text(`${N_DAYS}`, cx1, cy1 + 3);
+      p.textAlign(p.CENTER, p.TOP);
+      p.text('Hari', cx0 + cw / 2, cy1 + 3);
+
+      drawChartLegend(LEFT_W + PAD, CHART_H - 18);
+    }
+
+    function plotLine(data, key, maxVal, cx0, cy0, cw, ch, col, _unused) {
+      p.stroke(col);
+      p.strokeWeight(1.8);
+      p.noFill();
+      p.beginShape();
+      for (let i = 0; i <= frame && i < N_DAYS; i++) {
+        const x = cx0 + (i / Math.max(N_DAYS - 1, 1)) * cw;
+        const val = data[i][key] || 0;
+        const y = cy0 + ch - (val / maxVal) * ch;
+        p.vertex(x, y);
+      }
+      p.endShape();
+    }
+
+    function drawChartLegend(lx, ly) {
+      const items = [
+        { col: C.lineA,       label: 'Kunjungan A' },
+        { col: C.lineB,       label: 'Kunjungan B' },
+        { col: C.lineAversion,label: 'Avg Aversion' },
+      ];
+      let ox = lx;
+      items.forEach(item => {
+        p.stroke(item.col);
+        p.strokeWeight(2);
+        p.line(ox, ly, ox + 14, ly);
+        p.noStroke();
+        p.fill(C.textSec);
+        p.textSize(8);
+        p.textAlign(p.LEFT, p.CENTER);
+        p.text(item.label, ox + 17, ly);
+        ox += 90;
+      });
+    }
+
+    // ── HUD Bawah: Stats ──────────────────────────────────────
+    function drawHUD(d) {
+      const hudY = MAP_H;
+      const hudH = H - MAP_H;
+
+      p.noStroke();
+      p.fill(C.hudBg);
+      p.rect(0, hudY, W, hudH);
+      p.stroke(C.border);
+      p.strokeWeight(1);
+      p.line(0, hudY, W, hudY);
+
+      const stats = [
+        ['Hari',       `${frame + 1} / ${N_DAYS}`],
+        ['Rev Toko A', fmtRp(d.revenue_a)],
+        ['Rev Toko B', fmtRp(d.revenue_b)],
+        ['WOM',        d.wom_messages || 0],
+        ['Bad Exp',    d.bad_experiences || 0],
+        ['Avg Aversion', (d.avg_parking_aversion || 0).toFixed(3)],
+      ];
+
+      const colW = W / stats.length;
+      stats.forEach((s, i) => {
+        const cx = i * colW + colW / 2;
+        p.noStroke();
+        p.fill(C.textSec);
+        p.textSize(8);
+        p.textAlign(p.CENTER, p.TOP);
+        p.text(s[0].toUpperCase(), cx, hudY + 6);
+        p.fill(i < 3 ? C.textAcc : C.textPri);
+        p.textSize(12);
+        p.text(s[1], cx, hudY + 20);
+      });
+    }
+
+    function fmtRp(val) {
+      if (!val) return 'Rp0';
+      if (val >= 1_000_000) return `Rp${(val / 1_000_000).toFixed(2)}jt`;
+      return `Rp${Math.round(val / 1000)}rb`;
+    }
+
+  }); // end new p5
+  </script>
+
+</body>
+</html>

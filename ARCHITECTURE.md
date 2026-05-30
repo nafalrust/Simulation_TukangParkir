@@ -1,8 +1,8 @@
-# ARCHITECTURE.md — Arsitektur Sistem
+# ARCHITECTURE.md — Arsitektur Sistem & Three.js Scene Graph
 
 ---
 
-## Gambaran Sistem
+## Gambaran Sistem End-to-End
 
 ```
 [Google Form Survei — 16 pertanyaan]
@@ -22,187 +22,279 @@
                                                ▼
                                     [Mesa ABM — N hari simulasi]
                                                │
-                              ┌────────────────┴────────────────┐
-                              ▼                                  ▼
-                    [abm_daily: stats/hari]         [agent_snapshots: state agen]
-                              │                                  │
-                              └────────────────┬────────────────┘
+                                    [FastAPI — api.py]
+                                    POST /api/simulate
+                                               │
                                                ▼
-                                    [Streamlit App — app.py]
+                                    [Next.js Frontend]
                                                │
                               ┌────────────────┴────────────────┐
                               ▼                                  ▼
-                    [p5.js Animation]                  [Plotly Charts]
-                    (components/                       (chart pendukung)
-                    minimarket_animation.html)
+                    [Three.js 3D Scene]                [Recharts Time Series]
+                    (SimulationCanvas.tsx)             (RevenueChart.tsx)
                               │
-                    [st.components.v1.html()]
+                    [@react-three/fiber]
 ```
 
 ---
 
-## Cara Inject Data Python → p5.js
+## API Contract: Python Backend → Next.js Frontend
 
-Data dari Python di-inject ke HTML sebagai JavaScript literal via string replacement. Tidak ada komunikasi real-time — data di-bake saat komponen dirender.
+Data dikirim via REST API. Frontend melakukan POST ke `/api/simulate` dengan parameter, dan menerima seluruh hasil simulasi dalam satu response JSON.
 
-```python
-# Di app.py
-import json
-from pathlib import Path
-import streamlit.components.v1 as components
+```typescript
+// Request body (frontend → backend)
+interface SimulateRequest {
+  n_agents: number;          // 50–500
+  n_days: number;            // 10–180
+  market_radius: number;     // meter
+  distance_between_stores: number;
+  parking_intensity: number; // 0.0–1.0
+  shopping_prob: number;
+  avg_spending: number;
+  wom_impact: number;
+  share_probability: number;
+  memory_decay: number;
+  direct_experience_impact: number;
+  seed: number;
+}
 
-def render_abm_animation(abm_daily, agent_snapshots, dcm_results, sim_config):
-    template = (
-        Path(__file__).parent / "components" / "minimarket_animation.html"
-    ).read_text(encoding="utf-8")
-
-    html = template \
-        .replace("'__ABM_DAILY__'",  json.dumps(abm_daily)) \
-        .replace("'__AGENTS__'",     json.dumps(agent_snapshots)) \
-        .replace("'__DCM__'",        json.dumps(dcm_results)) \
-        .replace("'__CONFIG__'",     json.dumps(sim_config))
-
-    components.html(html, height=600, scrolling=False)
+// Response body (backend → frontend)
+interface SimulateResponse {
+  abm_daily: DayData[];
+  agent_snapshots: AgentSnapshot[];
+  dcm_results: DCMResults;
+  sim_config: SimConfig;
+}
 ```
 
-Di dalam HTML template, placeholder ditulis sebagai string literal:
-```html
-<script>
-  const abmDaily   = '__ABM_DAILY__';   // diganti json.dumps(abm_daily)
-  const agentData  = '__AGENTS__';      // diganti json.dumps(agent_snapshots)
-  const dcmResults = '__DCM__';         // diganti json.dumps(dcm_results)
-  const simConfig  = '__CONFIG__';      // diganti json.dumps(sim_config)
-</script>
+### Format `abm_daily`
+```typescript
+interface DayData {
+  day: number;
+  visits_a: number;
+  visits_b: number;
+  no_buy: number;
+  bad_experiences: number;
+  wom_messages: number;
+  avg_memory_a: number;     // float, range [-1, 0]
+  revenue_a: number;        // Rupiah
+  revenue_b: number;
+}
+```
+
+### Format `agent_snapshots` (state hari terakhir)
+```typescript
+interface AgentSnapshot {
+  id: number;
+  x: number;        // meter dari pusat, range [-market_radius, market_radius]
+  y: number;        // meter dari pusat
+  choice: 'A' | 'B' | 'none';
+  parking_aversion: number;   // [0, 1]
+  memory_a: number;           // [-1, 0]
+  had_bad_experience: boolean;
+}
+```
+
+### Format `dcm_results`
+```typescript
+interface DCMResults {
+  beta_jarak: number;
+  beta_parkir: number;
+  n_respondents: number;
+  log_likelihood: number;
+  pseudo_r2: number;
+  p_value_jarak: number;
+  p_value_parkir: number;
+}
+```
+
+### Format `sim_config`
+```typescript
+interface SimConfig {
+  n_agents: number;
+  n_days: number;
+  market_radius: number;
+  store_a_x: number;
+  store_a_y: number;
+  store_b_x: number;
+  store_b_y: number;
+}
 ```
 
 ---
 
-## Layout Canvas Animasi p5.js
+## Three.js Scene Graph
 
-Canvas ukuran **720 × 520 px**, dibagi tiga zona:
+Scene dirender oleh `SimulationCanvas.tsx` menggunakan `@react-three/fiber`.
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  PANEL KIRI (355 × 420px) — Peta Agen                          │
-│                                                                  │
-│  [🏪 A]  ·  ·  ·  ·  ·  ·  ·  [🏪 B]                          │
-│                                                                  │
-│   •  •  •  •  •  •  •  •  •   Titik = agen pelanggan          │
-│  •  •  •  •  •  •  •  •  •  • Merah  = pilih Toko A           │
-│   •  •  •  •  •  •  •  •  •   Hijau  = pilih Toko B           │
-│                                Abu    = tidak jadi beli         │
-│                                Ukuran ∝ |memory_A| agen        │
-│                                Border kuning = bad exp hari ini │
-├─────────────────────────────────────────────────────────────────┤
-│  PANEL KANAN (365 × 420px) — Chart Kunjungan Harian            │
-│                                                                  │
-│  Kunjungan ──────────────────────────────────                   │
-│  Toko A    ─────────────────── (merah)                         │
-│  Toko B         ─────────────── (hijau)                        │
-│  Avg Memory A  ················ (ungu, putus-putus)             │
-│                                                                  │
-│  Sumbu X: Hari ke-1 → ke-N                                     │
-│  Chart tumbuh real-time seiring playback                       │
-├─────────────────────────────────────────────────────────────────┤
-│  HUD BAWAH (720 × 60px) — Stats + Controls                     │
-│                                                                  │
-│  Hari: 23/60  Rev A: Rp2.38jt  Rev B: Rp1.47jt                │
-│  WOM: 8  Bad Exp: 14  Avg Memory A: -0.18                      │
-│                                                                  │
-│  [◀◀ Awal] [▶/⏸ Play] [▶▶ Akhir]  Speed:[●●○○○]  Day:[══●══] │
-└─────────────────────────────────────────────────────────────────┘
+<Canvas>
+  │
+  ├── <SceneLighting>
+  │     ├── AmbientLight (intensity 0.4, color #1a1a2e)
+  │     ├── DirectionalLight (position [10,20,5], castShadow)
+  │     ├── PointLight [Toko A] (color #ff4444, intensity 2, distance 200)
+  │     └── PointLight [Toko B] (color #44ff88, intensity 2, distance 200)
+  │
+  ├── <Ground>
+  │     ├── Plane (800×800, material: asphalt texture + normal map)
+  │     ├── RoadMarkings (dashed line antara dua toko)
+  │     └── GridHelper (subtle, opacity 0.08)
+  │
+  ├── <StoreA>   (posisi: [store_a_x, 0, store_a_y])
+  │     ├── Box (bangunan minimarket, warna merah)
+  │     ├── Roof (atap toko)
+  │     ├── SignBoard ("TOKO A", neon merah, glow)
+  │     ├── ParkingArea (area parkir, warna berbeda)
+  │     ├── JukirFigure (model humanoid jukir, animasi bergerak)
+  │     └── RevenueDisplay (floating text: "Rp X.XXjt", update tiap hari)
+  │
+  ├── <StoreB>   (posisi: [store_b_x, 0, store_b_y])
+  │     ├── Box (bangunan minimarket, warna hijau)
+  │     ├── Roof
+  │     ├── SignBoard ("TOKO B", neon hijau, glow)
+  │     └── RevenueDisplay (floating text: "Rp X.XXjt", update tiap hari)
+  │
+  ├── <AgentLayer>
+  │     └── [N × <AgentMesh>]
+  │           ├── Sphere (r=3, material berubah warna per frame)
+  │           ├── Trail (ekor cahaya saat agen bergerak)
+  │           └── BadExpRing (ring kuning berdenyut jika had_bad_experience)
+  │
+  ├── <WOMParticles>
+  │     └── Partikel cahaya yang muncul dan menyebar saat WOM terjadi
+  │
+  ├── <DayProgressBar>
+  │     └── Mesh memanjang di atas scene, progress = frame/N_DAYS
+  │
+  └── <CameraRig>
+        ├── OrbitControls (min/max polar angle, damping)
+        └── Camera default: posisi [0, 180, 250], lookAt [0, 0, 0]
 ```
 
 ---
 
-## Color Palette (wajib digunakan)
+## Transformasi Koordinat: Meter Simulasi → Three.js World Space
 
-```javascript
-const COLORS = {
+ABM menggunakan koordinat meter (x, y). Three.js menggunakan sumbu Y sebagai vertikal.
+Mapping: sim_x → three_x, sim_y → three_z (bukan three_y).
+
+```typescript
+// Agen berada di ketinggian Y = 4 (sedikit di atas ground)
+function simToWorld(simX: number, simY: number): [number, number, number] {
+  return [simX, 4, simY];
+}
+
+// Toko A dan B juga di Y = 0 (ground level), bangunan tumbuh ke atas
+const STORE_A_POS: [number, number, number] = [sim_config.store_a_x, 0, sim_config.store_a_y];
+const STORE_B_POS: [number, number, number] = [sim_config.store_b_x, 0, sim_config.store_b_y];
+```
+
+---
+
+## Layout Halaman Next.js
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│  HEADER — "ParkSim" logo + tagline + tombol About                  │
+├───────────────────────────────────────┬────────────────────────────┤
+│                                       │  PARAMETER PANEL           │
+│   THREE.JS CANVAS (3D Scene)          │  ─────────────────────     │
+│                                       │  👥 Jumlah Agen [slider]   │
+│   [Toko A]         [Toko B]           │  📅 Durasi (hari) [slider] │
+│      🏪                🏪             │  📍 Jarak A–B [slider]     │
+│   • • • • •       • • • •            │  🚫 Intensitas Jukir       │
+│      •   •    →       •              │  📣 WOM Impact [slider]     │
+│   • • • •         • • • •            │  🧠 Memory Decay [slider]   │
+│                                       │  ─────────────────────     │
+│   [HUD overlay: Hari 23/60]           │  [▶ JALANKAN] (primary)    │
+│   [Rev A: Rp2.38jt  Rev B: Rp1.47jt] │  [⏸ Pause] [⏮ Reset]      │
+│   [WOM: 8  BadExp: 14]               │  Speed: [●●○○○]            │
+│                                       │  Day scrubber: [═══●═══]   │
+├───────────────────────────────────────┴────────────────────────────┤
+│  CHART PANEL (fullwidth)                                            │
+│  [Kunjungan Harian — Recharts]  [Revenue Kumulatif — Recharts]     │
+├────────────────────────────────────────────────────────────────────┤
+│  DCM RESULTS PANEL                                                  │
+│  β Jarak: -0.0023   β Jukir: -0.847   McFadden R²: 0.24          │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Color Palette (wajib digunakan di seluruh UI)
+
+```typescript
+export const COLORS = {
   // Background
-  bg:            '#0f172a',   // background canvas
-  panelBg:       '#1e293b',   // background tiap panel
-  border:        '#334155',   // separator antar panel
+  bg:            '#0a0a14',   // background halaman (lebih gelap dari sebelumnya)
+  panelBg:       '#111827',   // background panel
+  panelBorder:   '#1f2937',   // border panel
+  glassBg:       'rgba(17, 24, 39, 0.8)',  // glass morphism
 
   // Agen
   agentA:        '#ef4444',   // agen pilih Toko A — merah
   agentB:        '#22c55e',   // agen pilih Toko B — hijau
-  agentNone:     '#64748b',   // agen tidak beli — abu
-  agentBadExp:   '#fbbf24',   // border kuning: bad experience hari ini
+  agentNone:     '#475569',   // agen tidak beli — abu gelap
+  agentBadExp:   '#fbbf24',   // ring kuning: bad experience
 
-  // Toko
-  storeA:        '#ef4444',   // ikon/label Toko A
-  storeB:        '#22c55e',   // ikon/label Toko B
+  // Toko / neon
+  storeANeon:    '#ff4466',   // neon sign Toko A
+  storeBNeon:    '#44ffaa',   // neon sign Toko B
+  storeAGlow:    'rgba(255, 68, 102, 0.3)',
+  storeBGlow:    'rgba(68, 255, 170, 0.3)',
 
   // Chart lines
-  lineA:         '#f87171',   // garis kunjungan Toko A
-  lineB:         '#4ade80',   // garis kunjungan Toko B
-  lineMemory:    '#a78bfa',   // garis avg memory A (putus-putus)
-  chartGrid:     '#1e293b',   // grid chart
+  lineA:         '#f87171',   // kunjungan Toko A
+  lineB:         '#4ade80',   // kunjungan Toko B
+  lineMemory:    '#a78bfa',   // avg memory A (putus-putus)
+  chartGrid:     '#1e293b',
+
+  // WOM particles
+  womColor:      '#fbbf24',   // warna partikel WOM
+  womGlow:       'rgba(251, 191, 36, 0.6)',
 
   // Teks
-  textPrimary:   '#f1f5f9',
+  textPrimary:   '#f8fafc',
   textSecondary: '#94a3b8',
   textAccent:    '#38bdf8',
+  textGold:      '#fbbf24',   // revenue / angka penting
 
-  // Controls
-  hudBg:         '#0f172a',
-  btnActive:     '#3b82f6',
+  // HUD / controls
+  hudBg:         'rgba(10, 10, 20, 0.85)',
+  btnPrimary:    '#3b82f6',
   btnHover:      '#2563eb',
-  btnInactive:   '#334155'
+  btnDanger:     '#ef4444',
 };
 ```
 
 ---
 
-## Transformasi Koordinat: Meter Simulasi → Pixel Canvas
+## Zustand Store Structure
 
-Agen di ABM memiliki koordinat dalam meter (misal x=234.5, y=-112.3). Perlu dikonversi ke pixel canvas di panel kiri.
+```typescript
+// lib/simulationStore.ts
+interface SimulationStore {
+  // Parameters (user-controlled)
+  params: SimulateRequest;
+  setParam: (key: keyof SimulateRequest, value: number) => void;
 
-```javascript
-// Panel kiri: x dari 0 ke LEFT_W, y dari 0 ke MAP_H
-const LEFT_W = 355, MAP_H = 420;
+  // Simulation data
+  data: SimulateResponse | null;
+  isLoading: boolean;
+  error: string | null;
 
-function toCanvasX(simX, config) {
-    // simX range: [-market_radius, store_b_x + market_radius]
-    const minX = -config.market_radius;
-    const maxX = config.store_b_x + config.market_radius;
-    return p.map(simX, minX, maxX, 20, LEFT_W - 20);
+  // Playback state
+  currentFrame: number;
+  isPlaying: boolean;
+  playbackSpeed: number;
+
+  // Actions
+  runSimulation: () => Promise<void>;
+  setFrame: (frame: number) => void;
+  togglePlay: () => void;
+  setSpeed: (speed: number) => void;
+  reset: () => void;
 }
-
-function toCanvasY(simY, config) {
-    // simY range: [-market_radius, market_radius]
-    return p.map(simY, -config.market_radius, config.market_radius, MAP_H - 20, 20);
-}
-```
-
----
-
-## Behavior Animasi
-
-```
-Mode PLAYBACK (default saat pertama dibuka):
-  - Mulai dari hari 1, bergerak ke hari N
-  - Per frame: render state hari ke-[frame]
-  - Panel kiri: warna agen berubah per hari (probabilistic dari abm_daily)
-  - Panel kanan: chart tumbuh satu titik per hari
-  - HUD: stats update real-time
-
-Mode FINAL STATE (setelah playback selesai atau klik ▶▶):
-  - Panel kiri: render agent_snapshots (posisi & warna hari terakhir)
-  - Panel kanan: full time series
-  - HUD: stats hari terakhir
-
-Coloring agen untuk hari bukan hari terakhir:
-  Karena agent_snapshots hanya tersedia untuk hari terakhir,
-  gunakan p.noise() deterministik untuk assign warna per agen
-  berdasarkan proporsi visits_a/visits_b/no_buy hari itu:
-
-  const d = abmDaily[frame];
-  const total = d.visits_a + d.visits_b + d.no_buy;
-  const pA = d.visits_a / total;
-  const pB = d.visits_b / total;
-  // Noise deterministik agar warna konsisten tiap render
-  const r = p.noise(ag.id * 0.1 + frame * 0.3);
-  color = r < pA ? COLORS.agentA : r < pA+pB ? COLORS.agentB : COLORS.agentNone;
 ```

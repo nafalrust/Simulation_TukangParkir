@@ -9,7 +9,7 @@
 
 **Nama:** ParkSim — Simulasi Pengaruh Tukang Parkir Liar terhadap Revenue Minimarket
 **Mata kuliah:** Teknik Pemodelan dan Simulasi (TPS), DTETI UGM 2025
-**Deliverable:** Interactive Streamlit app + artikel Notion + publikasi media sosial
+**Deliverable:** Interactive Next.js web app + artikel Notion + publikasi media sosial
 
 ---
 
@@ -71,17 +71,41 @@ Data Survei → DCM (estimasi β sekali) → β dipakai di fungsi utilitas tiap 
 ## Stack Teknologi
 
 ```
-Simulasi (dikerjakan anggota tim lain — JANGAN DIMODIFIKASI):
+Simulasi Backend (Python — dikerjakan anggota tim lain — JANGAN DIMODIFIKASI):
   Python 3.11+
   Mesa >= 2.3.0        # ABM engine
   statsmodels / numpy  # MNL estimation untuk DCM
   pandas
+  FastAPI              # REST API untuk expose hasil simulasi ke frontend
 
-Visualisasi (TUGAS UTAMA CLAUDE CODE):
-  Streamlit >= 1.35.0
-  p5.js 1.9.0 via CDN  # animasi utama
-  Plotly >= 5.22.0     # chart pendukung (sudah ada di app.py)
-  streamlit.components.v1.html()  # cara embed p5.js
+Visualisasi Frontend (TUGAS UTAMA CLAUDE CODE):
+  Next.js 14 (App Router)    # framework React SSR
+  Three.js r165              # 3D rendering engine
+  @react-three/fiber         # React bindings untuk Three.js
+  @react-three/drei          # helpers: OrbitControls, Text, Billboard, dll
+  Zustand                    # state management parameter simulasi
+  Tailwind CSS               # styling
+  Framer Motion              # animasi UI (panel, transisi)
+  Recharts                   # chart pendukung (time series)
+```
+
+---
+
+## Arsitektur Sistem (Ringkasan)
+
+```
+[Python ABM Backend]
+  main.py  →  FastAPI endpoint  →  /api/simulate  (POST)
+                                →  /api/simulate/stream  (SSE, opsional)
+
+[Next.js Frontend]
+  app/page.tsx           ← landing + parameter panel
+  app/simulation/page.tsx ← halaman utama simulasi
+  components/
+    SimulationCanvas.tsx  ← Three.js scene utama
+    ParameterPanel.tsx    ← slider + controls interaktif
+    HUD.tsx               ← overlay stats real-time
+    RevenueChart.tsx      ← Recharts time series
 ```
 
 ---
@@ -92,20 +116,37 @@ Visualisasi (TUGAS UTAMA CLAUDE CODE):
 Simulation_TukangParkir/
 │
 ├── CLAUDE.md                        ← File ini (baca pertama)
-├── MODEL_INTEGRATION.md             ← Pipeline DCM+ABM, format data
-├── ARCHITECTURE.md                  ← Struktur data, layout canvas
-├── VISUALIZATION.md                 ← Spesifikasi lengkap animasi p5.js
+├── MODEL_INTEGRATION.md             ← Pipeline DCM+ABM, format data API
+├── ARCHITECTURE.md                  ← Arsitektur Three.js, scene graph
+├── VISUALIZATION.md                 ← Spesifikasi lengkap scene 3D + animasi
 ├── TASK.md                          ← Task breakdown + acceptance criteria
 ├── PROGRESS.md                      ← Status progress dan mapping parameter
 │
-└── minimarket_abm/
-    ├── main.py                      ← ABM engine Mesa (JANGAN DIUBAH)
-    ├── dcm.py                       ← DCM estimation (JANGAN DIUBAH)
-    ├── config.py                    ← Parameter simulasi (BACA SAJA)
-    ├── app.py                       ← Streamlit app (TAMBAHKAN fungsi animasi)
-    ├── requirements.txt
-    └── components/
-        └── minimarket_animation.html  ← BUAT FILE INI (tugas utama)
+├── minimarket_abm/                  ← Python backend (JANGAN UBAH main.py / dcm.py)
+│   ├── main.py                      ← ABM engine Mesa
+│   ├── dcm.py                       ← DCM estimation
+│   ├── config.py                    ← Parameter simulasi
+│   ├── api.py                       ← FastAPI endpoint (BUAT INI untuk expose data)
+│   └── requirements.txt
+│
+└── parksim-frontend/                ← Next.js frontend (TUGAS UTAMA)
+    ├── app/
+    │   ├── page.tsx                 ← Landing / hero
+    │   └── simulation/
+    │       └── page.tsx             ← Halaman simulasi utama
+    ├── components/
+    │   ├── SimulationCanvas.tsx     ← Three.js scene
+    │   ├── ParameterPanel.tsx       ← Sidebar parameter
+    │   ├── HUD.tsx                  ← Overlay stats
+    │   ├── RevenueChart.tsx         ← Chart revenue
+    │   └── AgentLegend.tsx          ← Legenda warna agen
+    ├── lib/
+    │   ├── simulationStore.ts       ← Zustand store
+    │   └── api.ts                   ← fetch wrapper ke Python API
+    ├── public/
+    │   └── textures/                ← texture bangunan, jalan, dll
+    ├── package.json
+    └── tailwind.config.ts
 ```
 
 ---
@@ -113,27 +154,36 @@ Simulation_TukangParkir/
 ## Aturan untuk Claude Code
 
 ### DO ✅
-- Fokus pada `components/minimarket_animation.html` dan integrasi ke `app.py`
-- Test animasi standalone dengan data dummy sebelum integrasi
-- Inject data Python → JavaScript via `json.dumps()` + `str.replace()`
-- Gunakan `st.components.v1.html(html_string, height=600)` untuk embed
-- Pertahankan dark background (#0f172a) dan color palette dari ARCHITECTURE.md
+- Fokus pada `parksim-frontend/` dan file `api.py` untuk expose data simulasi
+- Gunakan `@react-three/fiber` dan `@react-three/drei` — bukan Three.js raw di dalam React
+- Inject data simulasi via fetch API (POST ke `/api/simulate`) — bukan hardcode
+- Gunakan Zustand untuk state management parameter
+- Pertahankan nuansa visual "game-like": dark theme, neon accents, animasi halus
+- Animasi agen harus terlihat seperti pergerakan orang nyata (easing, path interpolation)
+- Test scene di browser sebelum melapor selesai
 
 ### DON'T ❌
 - Jangan modifikasi `main.py` atau `dcm.py`
-- Jangan gunakan WebSocket, REST API, atau komunikasi real-time
-- Jangan hardcode data simulasi di HTML — selalu inject dari Python
-- Jangan gunakan `localStorage` atau `sessionStorage`
-- Jangan tambahkan library p5.js selain dari CDN yang sudah ditentukan
+- Jangan gunakan WebSocket untuk komunikasi (gunakan REST API + polling atau SSE)
+- Jangan hardcode data simulasi di frontend — selalu fetch dari backend
+- Jangan gunakan `localStorage` atau `sessionStorage` untuk state utama (pakai Zustand)
+- Jangan tambahkan Three.js via CDN — gunakan npm package
 
 ---
 
 ## Cara Menjalankan
 
 ```bash
+# Backend Python
 cd minimarket_abm
 python -m venv env
-source env/bin/activate   # Windows: env\Scripts\activate
+source env/bin/activate
 pip install -r requirements.txt
-streamlit run app.py
+uvicorn api:app --reload --port 8000
+
+# Frontend Next.js (terminal terpisah)
+cd parksim-frontend
+npm install
+npm run dev
+# Buka http://localhost:3000
 ```

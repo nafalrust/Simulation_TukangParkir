@@ -1,17 +1,25 @@
 # Python
 __pycache__/
 *.pyc
+*.pyo
 
-# Virtual environment
+# Virtual environments
 env/
 venv/
 .venv/
+Env/
 minimarket_abm/env/
 parkir_sim/env/
-
 
 # Jupyter
 .ipynb_checkpoints/
 
 # OS
 .DS_Store
+Thumbs.db
+
+# Streamlit
+.streamlit/
+
+# IDE
+.vscode/settings.json
