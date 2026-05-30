@@ -14,9 +14,6 @@ SHOPPING_NEED_PROBABILITY = 0.35
 MARKET_RADIUS = 500.0
 MIN_PURCHASE_AMOUNT = 1_000
 MAX_PURCHASE_AMOUNT = 200_000
-MIN_CHOOSE_B_PROBABILITY = 0.05
-MAX_CHOOSE_B_PROBABILITY = 0.95
-SCORE_SENSITIVITY = 5.0
 BASE_NEGATIVE_EXPERIENCE_PROBABILITY = 0.10
 MAX_NEGATIVE_EXPERIENCE_PROBABILITY = 0.80
 
@@ -60,26 +57,30 @@ class BaselineCustomerAgent(mesa.Agent):
             MAX_PURCHASE_AMOUNT + 1,
             1_000,
         )
-        distance_to_a = math.hypot(self.x - self.model.store_a.x, self.y - self.model.store_a.y)
-        distance_to_b = math.hypot(self.x - self.model.store_b.x, self.y - self.model.store_b.y)
+        distance_to_a = math.hypot(
+            self.x - self.model.store_a.x,
+            self.y - self.model.store_a.y,
+        )
+        distance_to_b = math.hypot(
+            self.x - self.model.store_b.x,
+            self.y - self.model.store_b.y,
+        )
 
         parking_fee_effect = self.model.parking_fee / self.purchase_amount
         distance_scale = max(1.0, self.model.distance_to_B)
-        parking_penalty = self.parking_aversion + parking_fee_effect
 
-        score_a = (
-            self.model.attractiveness_A
-            - (distance_to_a / distance_scale)
-            - parking_penalty
+        utility_a = (
+            self.model.beta_distance * (distance_to_a / distance_scale)
+            + self.model.beta_parking * self.parking_aversion
+            + self.model.beta_fee_ratio * parking_fee_effect
         )
-        score_b = self.model.attractiveness_B - (distance_to_b / distance_scale)
+        utility_b = self.model.beta_distance * (distance_to_b / distance_scale)
+        weight_a = self.model.attractiveness_A * math.exp(utility_a)
+        weight_b = self.model.attractiveness_B * math.exp(utility_b)
+        total_weight = weight_a + weight_b
 
-        choose_b_probability = 1.0 / (
-            1.0 + math.exp(-SCORE_SENSITIVITY * (score_b - score_a))
-        )
-        choose_b_probability = min(
-            MAX_CHOOSE_B_PROBABILITY,
-            max(MIN_CHOOSE_B_PROBABILITY, choose_b_probability),
+        choose_b_probability = (
+            0.5 if total_weight <= 0 else weight_b / total_weight
         )
 
         self.choice = "B" if self.random.random() < choose_b_probability else "A"
@@ -102,13 +103,16 @@ class BaselineCustomerAgent(mesa.Agent):
 
 class BaselineMiniMarket(mesa.Model):
     """
-    Baseline ABM dua minimarket berbasis scoring probabilistik.
+    Baseline ABM dua minimarket berbasis DCM/logit sederhana.
 
     Parameter konseptual:
     - Atribut toko: parking_fee, distance_to_B, attractiveness_A, attractiveness_B
     - Atribut agent: purchase_amount, parking_aversion
     - Dinamika pribadi: memory_strength
     - Dinamika sosial: wom_probability, wom_strength, num_contacts
+
+    DCM dipakai untuk probabilitas pilihan toko. Attractiveness bukan variabel
+    utility DCM, tetapi gain yang mengalikan exp(utility) tiap toko.
     """
 
     def __init__(
@@ -124,6 +128,9 @@ class BaselineMiniMarket(mesa.Model):
         wom_probability: float = 0.3,
         wom_strength: float = 0.05,
         num_contacts: int = 3,
+        beta_distance: float = -1.0,
+        beta_parking: float = -1.0,
+        beta_fee_ratio: float = -2.0,
         seed: int = 42,
     ) -> None:
         super().__init__(rng=seed)
@@ -139,6 +146,9 @@ class BaselineMiniMarket(mesa.Model):
         self.wom_probability = wom_probability
         self.wom_strength = wom_strength
         self.num_contacts = num_contacts
+        self.beta_distance = beta_distance
+        self.beta_parking = beta_parking
+        self.beta_fee_ratio = beta_fee_ratio
 
         self.store_a = Store("A", 0.0, 0.0, has_illegal_parking=True)
         self.store_b = Store("B", distance_to_B, 0.0, has_illegal_parking=False)
@@ -218,7 +228,7 @@ class BaselineMiniMarket(mesa.Model):
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Baseline Mesa ABM dengan scoring probabilistik dan memory pribadi."
+        description="Baseline Mesa ABM dengan DCM/logit, memory pribadi, dan WOM."
     )
     parser.add_argument("--customers", type=int, default=200)
     parser.add_argument("--days", type=int, default=60)
@@ -232,6 +242,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--wom-probability", type=float, default=0.3)
     parser.add_argument("--wom-strength", type=float, default=0.05)
     parser.add_argument("--num-contacts", type=int, default=3)
+    parser.add_argument("--beta-distance", type=float, default=-1.0)
+    parser.add_argument("--beta-parking", type=float, default=-1.0)
+    parser.add_argument("--beta-fee-ratio", type=float, default=-2.0)
     return parser
 
 
@@ -249,6 +262,9 @@ def main() -> None:
         wom_probability=args.wom_probability,
         wom_strength=args.wom_strength,
         num_contacts=args.num_contacts,
+        beta_distance=args.beta_distance,
+        beta_parking=args.beta_parking,
+        beta_fee_ratio=args.beta_fee_ratio,
         seed=args.seed,
     )
     results = model.run()

@@ -129,6 +129,9 @@ class BaselineDashboard:
             wom_probability=float(wom_probability),
             wom_strength=float(wom_strength),
             num_contacts=self.args.num_contacts,
+            beta_distance=self.args.beta_distance,
+            beta_parking=self.args.beta_parking,
+            beta_fee_ratio=self.args.beta_fee_ratio,
             seed=self.args.seed,
         )
 
@@ -346,6 +349,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--wom-probability", type=float, default=0.3)
     parser.add_argument("--wom-strength", type=float, default=0.05)
     parser.add_argument("--num-contacts", type=int, default=3)
+    parser.add_argument("--beta-distance", type=float, default=-1.0)
+    parser.add_argument("--beta-parking", type=float, default=-1.0)
+    parser.add_argument("--beta-fee-ratio", type=float, default=-2.0)
     parser.add_argument("--interval", type=int, default=350)
     parser.add_argument("--seed", type=int, default=42)
     return parser
