@@ -30,7 +30,7 @@ class Store:
 
 
 class BaselineCustomerAgent(mesa.Agent):
-    """Agent pelanggan baseline: scoring sederhana, memory pribadi, tanpa WOM."""
+    """Agent pelanggan baseline: scoring sederhana, memory pribadi, dan WOM simpel."""
 
     def __init__(
         self,
@@ -108,8 +108,7 @@ class BaselineMiniMarket(mesa.Model):
     - Atribut toko: parking_fee, distance_to_B, attractiveness_A, attractiveness_B
     - Atribut agent: purchase_amount, parking_aversion
     - Dinamika pribadi: memory_strength
-
-    Model ini belum memakai dinamika sosial/word-of-mouth.
+    - Dinamika sosial: wom_probability, wom_strength, num_contacts
     """
 
     def __init__(
@@ -122,6 +121,9 @@ class BaselineMiniMarket(mesa.Model):
         attractiveness_B: float = 0.5,
         parking_aversion: float = 0.4,
         memory_strength: float = 0.1,
+        wom_probability: float = 0.3,
+        wom_strength: float = 0.05,
+        num_contacts: int = 3,
         seed: int = 42,
     ) -> None:
         super().__init__(rng=seed)
@@ -134,6 +136,9 @@ class BaselineMiniMarket(mesa.Model):
         self.attractiveness_B = attractiveness_B
         self.parking_aversion = parking_aversion
         self.memory_strength = memory_strength
+        self.wom_probability = wom_probability
+        self.wom_strength = wom_strength
+        self.num_contacts = num_contacts
 
         self.store_a = Store("A", 0.0, 0.0, has_illegal_parking=True)
         self.store_b = Store("B", distance_to_B, 0.0, has_illegal_parking=False)
@@ -155,6 +160,7 @@ class BaselineMiniMarket(mesa.Model):
         self.daily_visits = {"A": 0, "B": 0}
         self.daily_revenue = {"A": 0, "B": 0}
         self.daily_negative_experiences = 0
+        self.daily_wom_messages = 0
 
         self.datacollector = DataCollector(
             model_reporters={
@@ -163,6 +169,7 @@ class BaselineMiniMarket(mesa.Model):
                 "Revenue A": lambda model: model.daily_revenue["A"],
                 "Revenue B": lambda model: model.daily_revenue["B"],
                 "Negative Experiences": "daily_negative_experiences",
+                "WOM Messages": "daily_wom_messages",
                 "Avg Parking Aversion": lambda model: sum(
                     customer.parking_aversion for customer in model.customers
                 )
@@ -174,11 +181,31 @@ class BaselineMiniMarket(mesa.Model):
         self.daily_visits = {"A": 0, "B": 0}
         self.daily_revenue = {"A": 0, "B": 0}
         self.daily_negative_experiences = 0
+        self.daily_wom_messages = 0
 
         self.agents.shuffle_do("step")
-        self.daily_negative_experiences = sum(
-            1 for customer in self.customers if customer.had_negative_experience
-        )
+        storytellers = [
+            customer for customer in self.customers if customer.had_negative_experience
+        ]
+        self.daily_negative_experiences = len(storytellers)
+
+        for storyteller in storytellers:
+            if self.random.random() >= self.wom_probability:
+                continue
+
+            contacts = [
+                customer for customer in self.customers if customer is not storyteller
+            ]
+            for listener in self.random.sample(
+                contacts,
+                min(self.num_contacts, len(contacts)),
+            ):
+                listener.parking_aversion = min(
+                    1.0,
+                    listener.parking_aversion + self.wom_strength,
+                )
+                self.daily_wom_messages += 1
+
         self.datacollector.collect(self)
 
     def run(self) -> pd.DataFrame:
@@ -202,6 +229,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--attractiveness-B", type=float, default=0.5)
     parser.add_argument("--parking-aversion", type=float, default=0.4)
     parser.add_argument("--memory-strength", type=float, default=0.1)
+    parser.add_argument("--wom-probability", type=float, default=0.3)
+    parser.add_argument("--wom-strength", type=float, default=0.05)
+    parser.add_argument("--num-contacts", type=int, default=3)
     return parser
 
 
@@ -216,6 +246,9 @@ def main() -> None:
         attractiveness_B=args.attractiveness_B,
         parking_aversion=args.parking_aversion,
         memory_strength=args.memory_strength,
+        wom_probability=args.wom_probability,
+        wom_strength=args.wom_strength,
+        num_contacts=args.num_contacts,
         seed=args.seed,
     )
     results = model.run()
@@ -231,6 +264,7 @@ def main() -> None:
                 "Revenue A": int(results["Revenue A"].sum()),
                 "Revenue B": int(results["Revenue B"].sum()),
                 "Negative Experiences": int(results["Negative Experiences"].sum()),
+                "WOM Messages": int(results["WOM Messages"].sum()),
                 "Final Avg Parking Aversion": round(
                     float(results["Avg Parking Aversion"].iloc[-1]), 3
                 ),
