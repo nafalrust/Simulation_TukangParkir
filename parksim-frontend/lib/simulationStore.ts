@@ -28,11 +28,13 @@ interface SimulationStore {
   currentFrame: number;
   isPlaying: boolean;
   playbackSpeed: number;
+  animationSpeed: number;   // kecepatan gerak fisik agen di 3D (0.1 – 2.0)
 
   runSimulation: () => Promise<void>;
   setFrame: (frame: number) => void;
   togglePlay: () => void;
   setSpeed: (speed: number) => void;
+  setAnimationSpeed: (speed: number) => void;
   reset: () => void;
   advanceFrame: () => void;
 }
@@ -50,6 +52,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   currentFrame: 0,
   isPlaying: false,
   playbackSpeed: 1,
+  animationSpeed: 0.3,   // default lambat agar mudah dianalisa
 
   runSimulation: async () => {
     set({ isLoading: true, error: null, isPlaying: false, currentFrame: 0 });
@@ -75,6 +78,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   },
 
   setSpeed: (speed) => set({ playbackSpeed: speed }),
+  setAnimationSpeed: (speed) => set({ animationSpeed: speed }),
 
   reset: () => set({ currentFrame: 0, isPlaying: false }),
 

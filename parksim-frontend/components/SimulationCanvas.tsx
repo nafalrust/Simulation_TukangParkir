@@ -11,7 +11,6 @@ import { AgentSnapshot, DayData } from '@/lib/api';
 const C = {
   agentA:      '#dc2626',
   agentB:      '#16a34a',
-  agentAverse: '#f97316',
   agentStay:   '#94a3b8',
   agentBadExp: '#eab308',
   storeAWall:  '#fca5a5',
@@ -19,7 +18,7 @@ const C = {
   storeBWall:  '#86efac',
   storeBRoof:  '#22c55e',
   ground:      '#e8f5e9',
-  road:        '#b0bec5',
+  road:        '#2d2d2d',   // aspal gelap (bukan hitam pekat)
   roadLine:    '#ffffff',
   sidewalk:    '#eceff1',
   womGold:     '#f59e0b',
@@ -29,7 +28,11 @@ const C = {
 
 function fract(x: number) { return x - Math.floor(x); }
 
-type AgentChoice = 'A' | 'B' | 'averse' | 'stay';
+// AgentChoice hanya 3 state sesuai model Python:
+// 'A'    → berbelanja ke Toko A
+// 'B'    → berbelanja ke Toko B
+// 'stay' → tidak keluar (shopping_need_probability tidak terpenuhi)
+type AgentChoice = 'A' | 'B' | 'stay';
 
 function resolveChoice(
   agent: AgentSnapshot,
@@ -40,7 +43,7 @@ function resolveChoice(
   if (frame >= nDays - 1) {
     if (agent.choice === 'A') return 'A';
     if (agent.choice === 'B') return 'B';
-    return agent.no_buy_reason === 'parking_aversion' ? 'averse' : 'stay';
+    return 'stay';   // no_buy_reason selalu "no_need" sesuai model Python
   }
   const total = dayData.visits_a + dayData.visits_b + dayData.no_buy || 1;
   const pA = dayData.visits_a / total;
@@ -48,11 +51,11 @@ function resolveChoice(
   const r  = fract(Math.sin(agent.id * 127.1 + frame * 311.7) * 43758.5453);
   if (r < pA) return 'A';
   if (r < pA + pB) return 'B';
-  return agent.parking_aversion > 0.5 ? 'averse' : 'stay';
+  return 'stay';
 }
 
 function choiceColor(c: AgentChoice) {
-  return c === 'A' ? C.agentA : c === 'B' ? C.agentB : c === 'averse' ? C.agentAverse : C.agentStay;
+  return c === 'A' ? C.agentA : c === 'B' ? C.agentB : C.agentStay;
 }
 
 // ─── Pencahayaan siang ────────────────────────────────────────────────────────
@@ -242,11 +245,13 @@ function JukirFigure({ storePos }: { storePos: [number, number, number] }) {
 }
 
 // ─── Agent Mesh (animasi murni via useRef + useFrame) ─────────────────────────
-function AgentMesh({ agent, choice, storeAPos, storeBPos }: {
+// animationSpeed: 0.05 (sangat lambat) – 2.0 (cepat), dari Zustand store
+function AgentMesh({ agent, choice, storeAPos, storeBPos, animationSpeed }: {
   agent: AgentSnapshot;
   choice: AgentChoice;
   storeAPos: THREE.Vector3;
   storeBPos: THREE.Vector3;
+  animationSpeed: number;
 }) {
   const groupRef = useRef<THREE.Group>(null!);
   const ringRef  = useRef<THREE.Mesh>(null!);
@@ -255,7 +260,6 @@ function AgentMesh({ agent, choice, storeAPos, storeBPos }: {
   const target = useMemo(() => {
     if (choice === 'A') return storeAPos.clone().setY(0);
     if (choice === 'B') return storeBPos.clone().setY(0);
-    if (choice === 'averse') return home.clone().lerp(storeAPos.clone().setY(0), 0.42);
     return home.clone();
   }, [choice, home, storeAPos, storeBPos]);
 
@@ -268,29 +272,22 @@ function AgentMesh({ agent, choice, storeAPos, storeBPos }: {
     const t = clock.getElapsedTime();
 
     if (choice === 'stay') {
+      // Diam di tempat dengan idle bobbing halus
       groupRef.current.position.set(home.x, bodyH + Math.sin(t * 1.2 + agent.id) * 0.3, home.z);
       return;
     }
 
-    const speed  = choice === 'averse' ? 0.38 : 0.33;
-    const cycle  = ((t * speed + agent.id * 0.17) % 1 + 1) % 1;
+    // Siklus perjalanan: jalan ke toko → berhenti sebentar → kembali ke rumah
+    // animationSpeed mengontrol kecepatan siklus
+    const baseSpeed = 0.33 * animationSpeed;
+    const cycle     = ((t * baseSpeed + agent.id * 0.17) % 1 + 1) % 1;
 
-    if (choice === 'averse') {
-      if (cycle < 0.35) {
-        tmpPos.lerpVectors(home, target, cycle / 0.35);
-      } else if (cycle < 0.55) {
-        tmpPos.copy(target);
-      } else {
-        tmpPos.lerpVectors(target, home, (cycle - 0.55) / 0.45);
-      }
+    if (cycle < 0.45) {
+      tmpPos.lerpVectors(home, target, cycle / 0.45);
+    } else if (cycle < 0.60) {
+      tmpPos.copy(target);
     } else {
-      if (cycle < 0.45) {
-        tmpPos.lerpVectors(home, target, cycle / 0.45);
-      } else if (cycle < 0.60) {
-        tmpPos.copy(target);
-      } else {
-        tmpPos.lerpVectors(target, home, (cycle - 0.60) / 0.40);
-      }
+      tmpPos.lerpVectors(target, home, (cycle - 0.60) / 0.40);
     }
 
     const prevX = groupRef.current.position.x;
@@ -568,7 +565,7 @@ function DayClock({ frame, nDays, posX, posZ }: {
 
 // ─── Main Scene ───────────────────────────────────────────────────────────────
 function Scene() {
-  const { data, currentFrame } = useSimulationStore();
+  const { data, currentFrame, animationSpeed } = useSimulationStore();
   if (!data) return null;
 
   const { abm_daily, agent_snapshots, sim_config } = data;
@@ -596,7 +593,6 @@ function Scene() {
   );
 
   const storeZ = sim_config.store_a_y;
-  const midX   = (sim_config.store_a_x + sim_config.store_b_x) / 2;
 
   return (
     <>
@@ -624,6 +620,7 @@ function Scene() {
           choice={agentChoices[i]}
           storeAPos={storeAVec}
           storeBPos={storeBVec}
+          animationSpeed={animationSpeed}
         />
       ))}
 

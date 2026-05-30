@@ -112,8 +112,10 @@ function ParamSlider({ config }: { config: SliderConfig }) {
 }
 
 function PlaybackControls() {
-  const { currentFrame, isPlaying, playbackSpeed, data, setFrame, togglePlay, setSpeed, reset } =
-    useSimulationStore();
+  const {
+    currentFrame, isPlaying, playbackSpeed, animationSpeed,
+    data, setFrame, togglePlay, setSpeed, setAnimationSpeed, reset,
+  } = useSimulationStore();
   if (!data) return null;
 
   const nDays = data.abm_daily.length;
@@ -123,68 +125,62 @@ function PlaybackControls() {
       <p className="text-gray-500 text-[10px] uppercase tracking-wider">Kontrol Playback</p>
 
       <div className="flex gap-1.5 items-center">
-        <button
-          onClick={() => setFrame(0)}
-          title="Ke awal"
-          className="flex-none px-2 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-sm transition-colors"
-        >
+        <button onClick={() => setFrame(0)} title="Ke awal"
+          className="flex-none px-2 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-sm transition-colors">
           ⏮
         </button>
-        <button
-          onClick={togglePlay}
-          className="flex-1 px-2 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-semibold transition-colors"
-        >
+        <button onClick={togglePlay}
+          className="flex-1 px-2 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-semibold transition-colors">
           {isPlaying ? '⏸ Pause' : '▶ Play'}
         </button>
-        <button
-          onClick={() => setFrame(nDays - 1)}
-          title="Ke akhir"
-          className="flex-none px-2 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-sm transition-colors"
-        >
+        <button onClick={() => setFrame(nDays - 1)} title="Ke akhir"
+          className="flex-none px-2 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-sm transition-colors">
           ⏭
         </button>
-        <button
-          onClick={reset}
-          title="Reset"
-          className="flex-none px-2 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-500 rounded text-sm transition-colors"
-        >
+        <button onClick={reset} title="Reset"
+          className="flex-none px-2 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-500 rounded text-sm transition-colors">
           ↺
         </button>
       </div>
 
+      {/* Day scrubber */}
       <div>
         <div className="flex justify-between text-gray-500 text-[10px] mb-1">
           <span>Hari</span>
           <span className="font-mono text-blue-600">{currentFrame + 1} / {nDays}</span>
         </div>
-        <input
-          type="range"
-          min={0}
-          max={nDays - 1}
-          value={currentFrame}
+        <input type="range" min={0} max={nDays - 1} value={currentFrame}
           onChange={(e) => setFrame(Number(e.target.value))}
-          className="w-full h-1.5 accent-blue-500 cursor-pointer"
-        />
+          className="w-full h-1.5 accent-blue-500 cursor-pointer" />
       </div>
 
+      {/* Playback speed (kecepatan ganti hari) */}
       <div>
         <div className="flex justify-between text-gray-500 text-[10px] mb-1">
-          <span>Kecepatan</span>
+          <span>Kecepatan Hari</span>
           <span className="font-mono text-blue-600">{playbackSpeed}×</span>
         </div>
-        <input
-          type="range"
-          min={1}
-          max={8}
-          step={1}
-          value={playbackSpeed}
+        <input type="range" min={1} max={8} step={1} value={playbackSpeed}
           onChange={(e) => setSpeed(Number(e.target.value))}
-          className="w-full h-1.5 accent-blue-500 cursor-pointer"
-        />
-        <div className="flex justify-between text-gray-500 text-[9px]">
-          <span>1×</span>
-          <span>8×</span>
+          className="w-full h-1.5 accent-blue-500 cursor-pointer" />
+        <div className="flex justify-between text-gray-400 text-[9px]">
+          <span>1× (lambat)</span><span>8× (cepat)</span>
         </div>
+      </div>
+
+      {/* Animation speed (kecepatan gerak fisik agen) */}
+      <div>
+        <div className="flex justify-between text-gray-500 text-[10px] mb-1">
+          <span>Kecepatan Gerak Agen</span>
+          <span className="font-mono text-blue-600">{animationSpeed.toFixed(2)}×</span>
+        </div>
+        <input type="range" min={0.05} max={2.0} step={0.05} value={animationSpeed}
+          onChange={(e) => setAnimationSpeed(Number(e.target.value))}
+          className="w-full h-1.5 accent-green-500 cursor-pointer" />
+        <div className="flex justify-between text-gray-400 text-[9px]">
+          <span>0.05 (sangat lambat)</span><span>2.0 (cepat)</span>
+        </div>
+        <p className="text-gray-400 text-[8px] mt-0.5">Atur untuk analisa yang lebih jelas</p>
       </div>
     </div>
   );

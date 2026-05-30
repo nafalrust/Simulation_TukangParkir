@@ -1,13 +1,14 @@
 'use client';
 
 export function AgentLegend() {
+  // Catatan: hanya 3 state sesuai model Python (main.py)
+  // Agen tidak beli selalu = no_need (tidak ada keperluan belanja hari itu)
   const items = [
-    { color: '#dc2626', label: 'Berbelanja ke Toko A', sub: 'bergerak menuju Toko A' },
-    { color: '#16a34a', label: 'Berbelanja ke Toko B', sub: 'bergerak menuju Toko B' },
-    { color: '#f97316', label: 'Mundur karena Jukir', sub: 'jalan setengah lalu balik' },
-    { color: '#94a3b8', label: 'Tidak ada keperluan', sub: 'diam di tempat (tidak belanja)' },
-    { color: '#eab308', label: 'Ring = Bad Experience', sub: 'pernah kena jukir hari ini' },
-    { color: '#f59e0b', label: '✨ Garis WOM', sub: 'menceritakan pengalaman buruk' },
+    { color: '#dc2626', label: 'Berbelanja ke Toko A', sub: 'berjalan menuju Toko A lalu pulang' },
+    { color: '#16a34a', label: 'Berbelanja ke Toko B', sub: 'berjalan menuju Toko B lalu pulang' },
+    { color: '#94a3b8', label: 'Tidak keluar (no_need)', sub: 'diam — tidak ada keperluan belanja' },
+    { color: '#eab308', label: 'Ring = Bad Experience', sub: 'kena pungutan jukir hari terakhir' },
+    { color: '#f59e0b', label: 'Arc kuning = WOM', sub: 'agen menceritakan pengalaman buruk' },
   ];
 
   return (

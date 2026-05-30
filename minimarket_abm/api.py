@@ -98,21 +98,21 @@ def simulate(req: SimulateRequest):
         })
 
     # Tahap 4: Ekstrak agent snapshots dari state akhir model
+    #
+    # Penjelasan no_buy_reason berdasarkan logika model Python (main.py):
+    #   Agen dengan choice == None terjadi HANYA karena:
+    #     random() > shopping_need_probability  →  agen tidak punya kebutuhan belanja hari ini
+    #   Tidak ada mekanisme "berniat ke toko lalu mundur karena jukir" di model:
+    #   agen yang takut jukir di Toko A justru akan MEMILIH Toko B (bukan none).
+    #   Oleh karena itu no_buy_reason selalu "no_need" jika choice == "none".
+    #
     # no_buy_reason:
-    #   "parking_aversion" → agen ingin beli tapi aversion jukir tinggi (animasi: jalan ke toko lalu balik)
-    #   "no_need"          → agen memang tidak berniat belanja hari ini (animasi: diam di tempat)
-    #   null               → agen berbelanja (choice A atau B)
+    #   "no_need" → agen tidak keluar hari ini (shopping_need_probability tidak terpenuhi)
+    #   null      → agen berbelanja (choice A atau B)
     agent_snapshots = []
     for c in model.customers:
         choice = c.choice if c.choice is not None else "none"
-
-        no_buy_reason = None
-        if choice == "none":
-            # Jika perceived_risk tinggi (> 0.3) dan parking_aversion tinggi → aversion terhadap jukir
-            if c.perceived_risk_a > 0.3 and c.parking_aversion > 0.5:
-                no_buy_reason = "parking_aversion"
-            else:
-                no_buy_reason = "no_need"
+        no_buy_reason = "no_need" if choice == "none" else None
 
         agent_snapshots.append({
             "id": int(c.unique_id),
