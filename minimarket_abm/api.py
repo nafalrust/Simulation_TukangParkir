@@ -98,9 +98,22 @@ def simulate(req: SimulateRequest):
         })
 
     # Tahap 4: Ekstrak agent snapshots dari state akhir model
+    # no_buy_reason:
+    #   "parking_aversion" → agen ingin beli tapi aversion jukir tinggi (animasi: jalan ke toko lalu balik)
+    #   "no_need"          → agen memang tidak berniat belanja hari ini (animasi: diam di tempat)
+    #   null               → agen berbelanja (choice A atau B)
     agent_snapshots = []
     for c in model.customers:
         choice = c.choice if c.choice is not None else "none"
+
+        no_buy_reason = None
+        if choice == "none":
+            # Jika perceived_risk tinggi (> 0.3) dan parking_aversion tinggi → aversion terhadap jukir
+            if c.perceived_risk_a > 0.3 and c.parking_aversion > 0.5:
+                no_buy_reason = "parking_aversion"
+            else:
+                no_buy_reason = "no_need"
+
         agent_snapshots.append({
             "id": int(c.unique_id),
             "x": float(c.x),
@@ -109,6 +122,7 @@ def simulate(req: SimulateRequest):
             "parking_aversion": float(c.parking_aversion),
             "memory_a": float(-abs(c.perceived_risk_a)),
             "had_bad_experience": bool(c.had_bad_experience),
+            "no_buy_reason": no_buy_reason,
         })
 
     sim_config = {

@@ -35,6 +35,7 @@ export interface AgentSnapshot {
   parking_aversion: number;
   memory_a: number;
   had_bad_experience: boolean;
+  no_buy_reason: 'parking_aversion' | 'no_need' | null;
 }
 
 export interface DCMResults {
