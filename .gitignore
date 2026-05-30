@@ -22,4 +22,14 @@ Thumbs.db
 .streamlit/
 
 # IDE
-.vscode/settings.json
+.vscode/browse.vc.db
+.vscode/browse.vc.db-shm
+.vscode/browse.vc.db-wal
+.vscode/*.vc.db
+.vscode/*.vc.db-shm
+.vscode/*.vc.db-wal
+
+# Node
+node_modules/
+.next/
+out/
