@@ -33,10 +33,10 @@ class BaselineDashboard:
         self.ax_revenue = self.fig.add_subplot(grid[1, 1])
         self.ax_aversion = self.ax_revenue.twinx()
 
-        self.fig.subplots_adjust(bottom=0.28, wspace=0.28, hspace=0.34)
+        self.fig.subplots_adjust(bottom=0.34, wspace=0.28, hspace=0.34)
 
         self.distance_slider = Slider(
-            ax=self.fig.add_axes([0.16, 0.17, 0.50, 0.03]),
+            ax=self.fig.add_axes([0.16, 0.24, 0.50, 0.03]),
             label="Distance to B",
             valmin=args.distance_min,
             valmax=args.distance_max,
@@ -44,7 +44,7 @@ class BaselineDashboard:
             valstep=args.distance_step,
         )
         self.attractiveness_a_slider = Slider(
-            ax=self.fig.add_axes([0.16, 0.115, 0.50, 0.03]),
+            ax=self.fig.add_axes([0.16, 0.19, 0.50, 0.03]),
             label="Attractiveness A",
             valmin=0.0,
             valmax=1.0,
@@ -52,20 +52,38 @@ class BaselineDashboard:
             valstep=0.05,
         )
         self.attractiveness_b_slider = Slider(
-            ax=self.fig.add_axes([0.16, 0.06, 0.50, 0.03]),
+            ax=self.fig.add_axes([0.16, 0.14, 0.50, 0.03]),
             label="Attractiveness B",
             valmin=0.0,
             valmax=1.0,
             valinit=args.attractiveness_B,
             valstep=0.05,
         )
-        self.reset_button = Button(self.fig.add_axes([0.74, 0.13, 0.08, 0.045]), "Reset")
-        self.step_button = Button(self.fig.add_axes([0.83, 0.13, 0.07, 0.045]), "Step")
-        self.run_button = Button(self.fig.add_axes([0.91, 0.13, 0.07, 0.045]), "Run")
+        self.wom_probability_slider = Slider(
+            ax=self.fig.add_axes([0.16, 0.09, 0.50, 0.03]),
+            label="WOM Probability",
+            valmin=0.0,
+            valmax=1.0,
+            valinit=args.wom_probability,
+            valstep=0.05,
+        )
+        self.wom_strength_slider = Slider(
+            ax=self.fig.add_axes([0.16, 0.04, 0.50, 0.03]),
+            label="WOM Strength",
+            valmin=0.0,
+            valmax=0.3,
+            valinit=args.wom_strength,
+            valstep=0.01,
+        )
+        self.reset_button = Button(self.fig.add_axes([0.74, 0.16, 0.08, 0.045]), "Reset")
+        self.step_button = Button(self.fig.add_axes([0.83, 0.16, 0.07, 0.045]), "Step")
+        self.run_button = Button(self.fig.add_axes([0.91, 0.16, 0.07, 0.045]), "Run")
 
         self.distance_slider.on_changed(self.on_distance_changed)
-        self.attractiveness_a_slider.on_changed(self.on_attractiveness_changed)
-        self.attractiveness_b_slider.on_changed(self.on_attractiveness_changed)
+        self.attractiveness_a_slider.on_changed(self.on_parameter_changed)
+        self.attractiveness_b_slider.on_changed(self.on_parameter_changed)
+        self.wom_probability_slider.on_changed(self.on_parameter_changed)
+        self.wom_strength_slider.on_changed(self.on_parameter_changed)
         self.reset_button.on_clicked(self.on_reset_clicked)
         self.step_button.on_clicked(self.on_step_clicked)
         self.run_button.on_clicked(self.on_run_clicked)
@@ -89,6 +107,16 @@ class BaselineDashboard:
             "val",
             self.args.attractiveness_B,
         )
+        wom_probability = getattr(
+            getattr(self, "wom_probability_slider", None),
+            "val",
+            self.args.wom_probability,
+        )
+        wom_strength = getattr(
+            getattr(self, "wom_strength_slider", None),
+            "val",
+            self.args.wom_strength,
+        )
         return BaselineMiniMarket(
             num_customers=self.args.customers,
             days=self.args.days,
@@ -98,6 +126,9 @@ class BaselineDashboard:
             attractiveness_B=float(attractiveness_B),
             parking_aversion=self.args.parking_aversion,
             memory_strength=self.args.memory_strength,
+            wom_probability=float(wom_probability),
+            wom_strength=float(wom_strength),
+            num_contacts=self.args.num_contacts,
             seed=self.args.seed,
         )
 
@@ -127,7 +158,7 @@ class BaselineDashboard:
     def on_distance_changed(self, distance_to_B: float) -> None:
         self.reset_model(distance_to_B)
 
-    def on_attractiveness_changed(self, _value: float) -> None:
+    def on_parameter_changed(self, _value: float) -> None:
         self.reset_model()
 
     def on_reset_clicked(self, _event) -> None:
@@ -201,7 +232,8 @@ class BaselineDashboard:
         self.ax_map.legend(loc="upper right")
         self.ax_map.set_title(
             f"Hari {self.day} | Distance to B = {self.model.distance_to_B:.0f} m "
-            f"| Attr A={self.model.attractiveness_A:.2f}, B={self.model.attractiveness_B:.2f}"
+            f"| Attr A={self.model.attractiveness_A:.2f}, B={self.model.attractiveness_B:.2f} "
+            f"| WOM p={self.model.wom_probability:.2f}, strength={self.model.wom_strength:.2f}"
         )
         self.ax_map.set_xlabel("Koordinat x")
         self.ax_map.set_ylabel("Koordinat y")
@@ -239,6 +271,13 @@ class BaselineDashboard:
                 color="#facc15",
                 alpha=0.35,
                 label="Negative Experiences",
+            )
+            self.ax_visits.plot(
+                days,
+                history["WOM Messages"],
+                color="#7c3aed",
+                linestyle=":",
+                label="WOM Messages",
             )
             self.ax_visits.legend(loc="upper right")
 
@@ -304,6 +343,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--attractiveness-B", type=float, default=0.5)
     parser.add_argument("--parking-aversion", type=float, default=0.4)
     parser.add_argument("--memory-strength", type=float, default=0.1)
+    parser.add_argument("--wom-probability", type=float, default=0.3)
+    parser.add_argument("--wom-strength", type=float, default=0.05)
+    parser.add_argument("--num-contacts", type=int, default=3)
     parser.add_argument("--interval", type=int, default=350)
     parser.add_argument("--seed", type=int, default=42)
     return parser
