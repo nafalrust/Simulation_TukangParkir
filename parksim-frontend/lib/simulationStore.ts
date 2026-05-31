@@ -4,15 +4,25 @@ import { runSimulation, SimulateRequest, SimulateResponse } from './api';
 const DEFAULT_PARAMS: SimulateRequest = {
   n_agents: 200,
   n_days: 60,
-  market_radius: 600,
-  distance_between_stores: 500,
-  parking_intensity: 0.7,
+  market_radius: 500,
+  distance_to_B: 500,
+  parking_fee: 2000,
+  attractiveness_A: 0.5,
+  attractiveness_B: 0.5,
+  parking_aversion: 0.4,
+  initial_risk_a: 0.05,
   shopping_prob: 0.35,
-  avg_spending: 25000,
-  wom_impact: 0.18,
-  share_probability: 0.6,
+  memory_strength: 0.1,
   memory_decay: 0.03,
   direct_experience_impact: 0.35,
+  wom_probability: 0.3,
+  wom_strength: 0.05,
+  num_contacts: 3,
+  weight_distance: -0.002,
+  weight_parking_aversion: -1.2,
+  weight_parking_fee: -2.0,
+  weight_risk: -1.0,
+  weight_attractiveness: 1.0,
   seed: 42,
 };
 
@@ -28,7 +38,7 @@ interface SimulationStore {
   currentFrame: number;
   isPlaying: boolean;
   playbackSpeed: number;
-  animationSpeed: number;   // kecepatan gerak fisik agen di 3D (0.1 – 2.0)
+  animationSpeed: number;
 
   runSimulation: () => Promise<void>;
   setFrame: (frame: number) => void;
@@ -52,7 +62,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   currentFrame: 0,
   isPlaying: false,
   playbackSpeed: 1,
-  animationSpeed: 0.3,   // default lambat agar mudah dianalisa
+  animationSpeed: 0.3,
 
   runSimulation: async () => {
     set({ isLoading: true, error: null, isPlaying: false, currentFrame: 0 });

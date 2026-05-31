@@ -63,7 +63,7 @@ export function RevenueChart() {
             <Legend wrapperStyle={{ fontSize: 10 }} />
             <Line dataKey="visits_a" name="Toko A" stroke="#f87171" dot={false} strokeWidth={2} />
             <Line dataKey="visits_b" name="Toko B" stroke="#4ade80" dot={false} strokeWidth={2} />
-            <Line dataKey="avg_memory_a" name="Avg Mem A" stroke="#a78bfa"
+            <Line dataKey="avg_risk_a" name="Avg Risk A" stroke="#a78bfa"
               dot={false} strokeWidth={1.5} strokeDasharray="4 4" />
           </LineChart>
         </ResponsiveContainer>
@@ -107,29 +107,5 @@ export function RevenueChart() {
   );
 }
 
-export function DCMPanel() {
-  const { data } = useSimulationStore();
-  if (!data) return null;
-  const dcm = data.dcm_results;
-
-  return (
-    <div className="bg-gray-900/80 border-t border-gray-800 px-4 py-3">
-      <h3 className="text-gray-300 text-xs font-semibold mb-2">🔬 Hasil DCM (Multinomial Logit)</h3>
-      <div className="flex gap-4 flex-wrap">
-        {[
-          { label: 'β Jarak', value: dcm.beta_jarak.toFixed(4), hint: 'p=' + dcm.p_value_jarak.toFixed(3), color: 'text-red-400' },
-          { label: 'β Jukir', value: dcm.beta_parkir.toFixed(4), hint: 'p=' + dcm.p_value_parkir.toFixed(3), color: 'text-red-400' },
-          { label: "McFadden R²", value: dcm.pseudo_r2.toFixed(3), hint: '>0.2 = fit baik', color: 'text-green-400' },
-          { label: 'Log-Likelihood', value: dcm.log_likelihood.toFixed(1), hint: '', color: 'text-blue-400' },
-          { label: 'N Responden', value: dcm.n_respondents.toString(), hint: '', color: 'text-yellow-400' },
-        ].map((item) => (
-          <div key={item.label} className="bg-gray-800 rounded-lg px-3 py-2 min-w-[110px]">
-            <div className="text-gray-500 text-[9px] uppercase tracking-wider">{item.label}</div>
-            <div className={`text-sm font-bold font-mono ${item.color}`}>{item.value}</div>
-            {item.hint && <div className="text-gray-600 text-[9px]">{item.hint}</div>}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+// DCMPanel dihapus — model baru tidak menggunakan DCM
+// Gunakan ChartsPanel → ModelParamsSection untuk melihat parameter model ABM

@@ -1,8 +1,7 @@
 """
-api.py — FastAPI endpoint untuk ParkSim.
+api.py — FastAPI endpoint untuk ParkSim (pure ABM, tanpa DCM).
 
-Expose hasil simulasi DCM + ABM ke Next.js frontend via REST API.
-POST /api/simulate  → jalankan DCM + ABM, kembalikan hasil lengkap.
+POST /api/simulate  → jalankan ABM weighted-scoring+softmax, kembalikan hasil lengkap.
 """
 
 from __future__ import annotations
@@ -11,10 +10,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from dcm import run_dcm
 from main import MiniMarket
 
-app = FastAPI(title="ParkSim API", version="1.0.0")
+app = FastAPI(title="ParkSim API", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -30,23 +28,45 @@ app.add_middleware(
 
 
 class SimulateRequest(BaseModel):
+    # Populasi & durasi
     n_agents: int = Field(default=200, ge=50, le=500)
     n_days: int = Field(default=60, ge=10, le=180)
-    market_radius: float = Field(default=600.0, ge=100.0, le=2000.0)
-    distance_between_stores: float = Field(default=500.0, ge=50.0, le=1500.0)
-    parking_intensity: float = Field(default=0.7, ge=0.0, le=1.0)
+    market_radius: float = Field(default=500.0, ge=100.0, le=2000.0)
+    distance_to_B: float = Field(default=500.0, ge=50.0, le=1500.0)
+
+    # Toko
+    parking_fee: int = Field(default=2000, ge=0, le=20000)
+    attractiveness_A: float = Field(default=0.5, ge=0.0, le=1.0)
+    attractiveness_B: float = Field(default=0.5, ge=0.0, le=1.0)
+
+    # Agen
+    parking_aversion: float = Field(default=0.4, ge=0.0, le=1.0)
+    initial_risk_a: float = Field(default=0.05, ge=0.0, le=1.0)
     shopping_prob: float = Field(default=0.35, ge=0.05, le=1.0)
-    avg_spending: int = Field(default=25000, ge=5000, le=100000)
-    wom_impact: float = Field(default=0.18, ge=0.0, le=0.5)
-    share_probability: float = Field(default=0.6, ge=0.0, le=1.0)
+
+    # Memori
+    memory_strength: float = Field(default=0.1, ge=0.0, le=0.5)
     memory_decay: float = Field(default=0.03, ge=0.0, le=0.1)
     direct_experience_impact: float = Field(default=0.35, ge=0.0, le=1.0)
+
+    # Sosial (WOM)
+    wom_probability: float = Field(default=0.3, ge=0.0, le=1.0)
+    wom_strength: float = Field(default=0.05, ge=0.0, le=0.5)
+    num_contacts: int = Field(default=3, ge=1, le=10)
+
+    # Bobot skor (semua negatif untuk distance/aversion/fee/risk, positif untuk attractiveness)
+    weight_distance: float = Field(default=-0.002, ge=-0.02, le=0.0)
+    weight_parking_aversion: float = Field(default=-1.2, ge=-5.0, le=0.0)
+    weight_parking_fee: float = Field(default=-2.0, ge=-5.0, le=0.0)
+    weight_risk: float = Field(default=-1.0, ge=-5.0, le=0.0)
+    weight_attractiveness: float = Field(default=1.0, ge=0.0, le=5.0)
+
     seed: int = Field(default=42)
 
 
 @app.get("/")
 def root():
-    return {"status": "ok", "service": "ParkSim API", "version": "1.0.0"}
+    return {"status": "ok", "service": "ParkSim API", "version": "2.0.0"}
 
 
 @app.get("/health")
@@ -56,28 +76,34 @@ def health():
 
 @app.post("/api/simulate")
 def simulate(req: SimulateRequest):
-    # Tahap 1: Estimasi DCM (sekali saja)
-    dcm_results = run_dcm()
-
-    # Tahap 2: Jalankan ABM
     model = MiniMarket(
         num_customers=req.n_agents,
-        distance_between_stores=req.distance_between_stores,
-        market_radius=req.market_radius,
         days=req.n_days,
+        market_radius=req.market_radius,
+        distance_to_B=req.distance_to_B,
+        parking_fee=req.parking_fee,
+        attractiveness_A=req.attractiveness_A,
+        attractiveness_B=req.attractiveness_B,
+        parking_aversion=req.parking_aversion,
+        initial_risk_a=req.initial_risk_a,
         shopping_need_probability=req.shopping_prob,
-        parking_intensity=req.parking_intensity,
-        direct_experience_impact=req.direct_experience_impact,
-        word_of_mouth_impact=req.wom_impact,
-        share_probability=req.share_probability,
+        memory_strength=req.memory_strength,
         memory_decay=req.memory_decay,
-        average_spending=req.avg_spending,
+        direct_experience_impact=req.direct_experience_impact,
+        wom_probability=req.wom_probability,
+        wom_strength=req.wom_strength,
+        num_contacts=req.num_contacts,
+        weight_distance=req.weight_distance,
+        weight_parking_aversion=req.weight_parking_aversion,
+        weight_parking_fee=req.weight_parking_fee,
+        weight_risk=req.weight_risk,
+        weight_attractiveness=req.weight_attractiveness,
         seed=req.seed,
     )
 
-    history = model.run()  # DataFrame: index = hari (0-based), kolom = metrics
+    history = model.run()  # DataFrame: index = hari (0-based)
 
-    # Tahap 3: Konversi history DataFrame → abm_daily list
+    # Konversi history DataFrame → abm_daily list
     abm_daily = []
     for i, row in history.iterrows():
         visits_a = int(row.get("Visits A", 0))
@@ -92,23 +118,23 @@ def simulate(req: SimulateRequest):
             "no_buy": no_buy,
             "bad_experiences": int(row.get("Bad Experiences", 0)),
             "wom_messages": int(row.get("WOM Messages", 0)),
-            "avg_memory_a": float(-abs(row.get("Avg Risk A", row.get("avg_memory_a", 0)))),
+            "avg_risk_a": float(row.get("Avg Risk A", 0)),
+            "avg_parking_aversion": float(row.get("Avg Parking Aversion", 0)),
             "revenue_a": int(row.get("Revenue A", 0)),
             "revenue_b": int(row.get("Revenue B", 0)),
         })
 
-    # Tahap 4: Ekstrak agent snapshots dari state akhir model
+    # Ekstrak agent snapshots dari state akhir model
     #
-    # Penjelasan no_buy_reason berdasarkan logika model Python (main.py):
-    #   Agen dengan choice == None terjadi HANYA karena:
-    #     random() > shopping_need_probability  →  agen tidak punya kebutuhan belanja hari ini
-    #   Tidak ada mekanisme "berniat ke toko lalu mundur karena jukir" di model:
-    #   agen yang takut jukir di Toko A justru akan MEMILIH Toko B (bukan none).
-    #   Oleh karena itu no_buy_reason selalu "no_need" jika choice == "none".
+    # Penjelasan logika choice:
+    #   choice == None  →  agen tidak punya kebutuhan belanja hari ini
+    #                      (random() > shopping_need_probability)
+    #   choice == "A"   →  memilih Toko A (softmax probability_a menang)
+    #   choice == "B"   →  memilih Toko B (softmax probability_b menang)
     #
-    # no_buy_reason:
-    #   "no_need" → agen tidak keluar hari ini (shopping_need_probability tidak terpenuhi)
-    #   null      → agen berbelanja (choice A atau B)
+    # Tidak ada mekanisme "berniat ke toko lalu mundur karena jukir".
+    # Agen yang takut jukir hanya mendapat skor A yang lebih rendah →
+    # probabilitas softmax B naik → memilih B, bukan none.
     agent_snapshots = []
     for c in model.customers:
         choice = c.choice if c.choice is not None else "none"
@@ -120,10 +146,26 @@ def simulate(req: SimulateRequest):
             "y": float(c.y),
             "choice": choice,
             "parking_aversion": float(c.parking_aversion),
-            "memory_a": float(-abs(c.perceived_risk_a)),
+            "perceived_risk_a": float(c.perceived_risk_a),
             "had_bad_experience": bool(c.had_bad_experience),
             "no_buy_reason": no_buy_reason,
         })
+
+    # Model parameters untuk konteks frontend
+    model_params = {
+        "weight_distance": req.weight_distance,
+        "weight_parking_aversion": req.weight_parking_aversion,
+        "weight_parking_fee": req.weight_parking_fee,
+        "weight_risk": req.weight_risk,
+        "weight_attractiveness": req.weight_attractiveness,
+        "parking_fee": req.parking_fee,
+        "attractiveness_A": req.attractiveness_A,
+        "attractiveness_B": req.attractiveness_B,
+        "wom_probability": req.wom_probability,
+        "wom_strength": req.wom_strength,
+        "memory_strength": req.memory_strength,
+        "memory_decay": req.memory_decay,
+    }
 
     sim_config = {
         "n_agents": req.n_agents,
@@ -138,6 +180,6 @@ def simulate(req: SimulateRequest):
     return {
         "abm_daily": abm_daily,
         "agent_snapshots": agent_snapshots,
-        "dcm_results": dcm_results,
+        "model_params": model_params,
         "sim_config": sim_config,
     }

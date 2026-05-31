@@ -44,7 +44,7 @@ export function HUD() {
       <StatCard label="Kunjungan B" value={d.visits_b} accent="green" />
       <StatCard label="WOM" value={d.wom_messages} accent="yellow" />
       <StatCard label="Bad Exp" value={d.bad_experiences} accent="orange" />
-      <StatCard label="Avg Mem A" value={d.avg_memory_a.toFixed(3)} accent="purple" />
+      <StatCard label="Avg Risk A" value={d.avg_risk_a.toFixed(3)} accent="purple" />
     </div>
   );
 }
