@@ -19,6 +19,10 @@ MAX_NEGATIVE_EXPERIENCE_PROBABILITY = 0.80
 DISTANCE_THRESHOLD = 1_000.0
 NOMINAL_THRESHOLD = 20_000
 AVERSION_WEIGHT = 1.0
+MEMORY_STRENGTH = 0.1
+WOM_PROBABILITY = 0.3
+WOM_STRENGTH = 0.05
+NUM_CONTACTS = 3
 
 ASC_STORE = 0.0
 ASC_NO_SHOP = -0.3
@@ -26,6 +30,9 @@ ASC_NO_SHOP = -0.3
 BETA_FAR = -1.0
 BETA_ILLEGAL_PARKING = -1.2
 BETA_HIGH_NOMINAL = 0.6
+BETA_ATTRACTIVENESS = 1.0
+ATTRACTIVENESS_A = 0.5
+ATTRACTIVENESS_B = 0.5
 
 @dataclass(frozen=True)
 class Store:
@@ -33,6 +40,7 @@ class Store:
     x: float
     y: float
     has_illegal_parking: bool
+    attractiveness: float
 
 class CustomerAgent(mesa.Agent):
     def __init__(self, model: "MiniMarket", x: float, y: float, parking_aversion: float) -> None:
@@ -73,6 +81,8 @@ class CustomerAgent(mesa.Agent):
             + self.model_parameter("beta_far", BETA_FAR) * is_far
             + self.model_parameter("beta_illegal_parking", BETA_ILLEGAL_PARKING) * has_illegal_parking
             + self.model_parameter("beta_high_nominal", BETA_HIGH_NOMINAL) * is_high_nominal
+            + self.model_parameter("beta_attractiveness", BETA_ATTRACTIVENESS)
+            * store.attractiveness
             - parking_aversion_penalty
         )
 
@@ -135,7 +145,8 @@ class CustomerAgent(mesa.Agent):
                     self.had_negative_experience = True
                     self.parking_aversion = min(
                         1.0,
-                        self.parking_aversion + 0.1,
+                        self.parking_aversion
+                        + self.model_parameter("memory_strength", MEMORY_STRENGTH),
                     )
 
 class MiniMarket(mesa.Model):
@@ -152,11 +163,18 @@ class MiniMarket(mesa.Model):
         beta_far: float = BETA_FAR,
         beta_illegal_parking: float = BETA_ILLEGAL_PARKING,
         beta_high_nominal: float = BETA_HIGH_NOMINAL,
+        beta_attractiveness: float = BETA_ATTRACTIVENESS,
+        attractiveness_a: float = ATTRACTIVENESS_A,
+        attractiveness_b: float = ATTRACTIVENESS_B,
 
         # Parameter threshold dan aversion
         distance_threshold: float = DISTANCE_THRESHOLD,
         nominal_threshold: float = NOMINAL_THRESHOLD,
         aversion_weight: float = AVERSION_WEIGHT,
+        memory_strength: float = MEMORY_STRENGTH,
+        wom_probability: float = WOM_PROBABILITY,
+        wom_strength: float = WOM_STRENGTH,
+        num_contacts: int = NUM_CONTACTS,
     ) -> None:
         super().__init__(seed=seed)
 
@@ -170,9 +188,14 @@ class MiniMarket(mesa.Model):
         self.beta_far = beta_far
         self.beta_illegal_parking = beta_illegal_parking
         self.beta_high_nominal = beta_high_nominal
+        self.beta_attractiveness = beta_attractiveness
         self.distance_threshold = distance_threshold
         self.nominal_threshold = nominal_threshold
         self.aversion_weight = aversion_weight
+        self.memory_strength = memory_strength
+        self.wom_probability = wom_probability
+        self.wom_strength = wom_strength
+        self.num_contacts = num_contacts
 
         # Dua minimarket
         # A: ada tukang parkir liar
@@ -183,18 +206,21 @@ class MiniMarket(mesa.Model):
                 x=width * 0.35,
                 y=height * 0.5,
                 has_illegal_parking=True,
+                attractiveness=attractiveness_a,
             ),
             Store(
                 name="Minimarket B",
                 x=width * 0.65,
                 y=height * 0.5,
                 has_illegal_parking=False,
+                attractiveness=attractiveness_b,
             ),
         ]
 
         # Variabel harian
         self.daily_visits = self.create_empty_daily_visits()
         self.daily_revenue = self.create_empty_daily_revenue()
+        self.daily_wom_messages = 0
 
         # Variabel kumulatif
         self.total_visits = self.create_empty_daily_visits()
@@ -233,6 +259,7 @@ class MiniMarket(mesa.Model):
                 "Total_Revenue_Minimarket_B": lambda m: m.total_revenue["Minimarket B"],
                 "Average_Parking_Aversion": lambda m: m.average_parking_aversion(),
                 "Negative_Experience_Count": lambda m: m.negative_experience_count(),
+                "WOM_Messages": "daily_wom_messages",
             },
             agent_reporters={
                 "Choice": "choice",
@@ -267,6 +294,7 @@ class MiniMarket(mesa.Model):
     def reset_daily_data(self) -> None:
         self.daily_visits = self.create_empty_daily_visits()
         self.daily_revenue = self.create_empty_daily_revenue()
+        self.daily_wom_messages = 0
 
     def update_total_data(self) -> None:
         for choice_name, visit_count in self.daily_visits.items():
@@ -293,6 +321,34 @@ class MiniMarket(mesa.Model):
             if customer.had_negative_experience
         )
 
+    def spread_word_of_mouth(self) -> None:
+        storytellers = [
+            customer
+            for customer in self.customers
+            if customer.had_negative_experience
+        ]
+
+        for storyteller in storytellers:
+            if self.random.random() >= self.wom_probability:
+                continue
+
+            contacts = [
+                customer
+                for customer in self.customers
+                if customer is not storyteller
+            ]
+            listeners = self.random.sample(
+                contacts,
+                min(self.num_contacts, len(contacts)),
+            )
+
+            for listener in listeners:
+                listener.parking_aversion = min(
+                    1.0,
+                    listener.parking_aversion + self.wom_strength,
+                )
+                self.daily_wom_messages += 1
+
     def step(self) -> None:
         self.reset_daily_data()
 
@@ -302,6 +358,7 @@ class MiniMarket(mesa.Model):
         for customer in self.customers:
             customer.step()
 
+        self.spread_word_of_mouth()
         self.update_total_data()
         self.datacollector.collect(self)
 
@@ -324,6 +381,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--beta-far", type=float, default=BETA_FAR)
     parser.add_argument("--beta-illegal-parking", type=float, default=BETA_ILLEGAL_PARKING)
     parser.add_argument("--beta-high-nominal", type=float, default=BETA_HIGH_NOMINAL)
+    parser.add_argument("--beta-attractiveness", type=float, default=BETA_ATTRACTIVENESS)
+    parser.add_argument("--attractiveness-a", type=float, default=ATTRACTIVENESS_A)
+    parser.add_argument("--attractiveness-b", type=float, default=ATTRACTIVENESS_B)
 
     # Parameter threshold
     parser.add_argument("--distance-threshold", type=float, default=DISTANCE_THRESHOLD)
@@ -331,6 +391,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     # Parameter ABM tambahan
     parser.add_argument("--aversion-weight", type=float, default=AVERSION_WEIGHT)
+    parser.add_argument("--memory-strength", type=float, default=MEMORY_STRENGTH)
+    parser.add_argument("--wom-probability", type=float, default=WOM_PROBABILITY)
+    parser.add_argument("--wom-strength", type=float, default=WOM_STRENGTH)
+    parser.add_argument("--num-contacts", type=int, default=NUM_CONTACTS)
 
     # Output
     parser.add_argument("--save-csv", action="store_true")
@@ -352,10 +416,17 @@ def run_simulation(args: argparse.Namespace) -> MiniMarket:
         beta_far=args.beta_far,
         beta_illegal_parking=args.beta_illegal_parking,
         beta_high_nominal=args.beta_high_nominal,
+        beta_attractiveness=args.beta_attractiveness,
+        attractiveness_a=args.attractiveness_a,
+        attractiveness_b=args.attractiveness_b,
 
         distance_threshold=args.distance_threshold,
         nominal_threshold=args.nominal_threshold,
         aversion_weight=args.aversion_weight,
+        memory_strength=args.memory_strength,
+        wom_probability=args.wom_probability,
+        wom_strength=args.wom_strength,
+        num_contacts=args.num_contacts,
     )
 
     for _ in range(args.days):
@@ -376,6 +447,7 @@ def print_summary(model: MiniMarket) -> None:
     print(f"Total Tidak Belanja           : {model.total_visits[NO_SHOP]}")
     print(f"Total Revenue Minimarket A    : Rp{model.total_revenue['Minimarket A']:,.0f}")
     print(f"Total Revenue Minimarket B    : Rp{model.total_revenue['Minimarket B']:,.0f}")
+    print(f"Total WOM Messages            : {int(model_results['WOM_Messages'].sum())}")
     print(f"Average Parking Aversion Akhir: {model.average_parking_aversion():.3f}")
 
 
