@@ -1,17 +1,35 @@
 # Python
 __pycache__/
 *.pyc
+*.pyo
 
-# Virtual environment
+# Virtual environments
 env/
 venv/
 .venv/
+Env/
 minimarket_abm/env/
 parkir_sim/env/
-
 
 # Jupyter
 .ipynb_checkpoints/
 
 # OS
 .DS_Store
+Thumbs.db
+
+# Streamlit
+.streamlit/
+
+# IDE
+.vscode/browse.vc.db
+.vscode/browse.vc.db-shm
+.vscode/browse.vc.db-wal
+.vscode/*.vc.db
+.vscode/*.vc.db-shm
+.vscode/*.vc.db-wal
+
+# Node
+node_modules/
+.next/
+out/
