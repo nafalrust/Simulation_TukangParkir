@@ -87,8 +87,12 @@ export interface SimConfig {
 }
 
 export interface SimulateResponse {
+  // Skenario ADA jukir
   abm_daily: DayData[];
   agent_snapshots: AgentSnapshot[];
+  // Skenario TANPA jukir (perbandingan)
+  abm_daily_no_jukir: DayData[];
+  agent_snapshots_no_jukir: AgentSnapshot[];
   model_params: ModelParams;
   sim_config: SimConfig;
 }

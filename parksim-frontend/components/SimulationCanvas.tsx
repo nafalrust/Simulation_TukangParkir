@@ -571,13 +571,17 @@ function DayClock({ frame, nDays, posX, posZ }: {
 
 // ─── Main Scene ───────────────────────────────────────────────────────────────
 function Scene() {
-  const { data, currentFrame, animationSpeed } = useSimulationStore();
+  const { data, currentFrame, animationSpeed, showNoJukir } = useSimulationStore();
   if (!data) return null;
 
-  const { abm_daily, agent_snapshots, sim_config } = data;
-  const nDays   = abm_daily.length;
+  // Pilih dataset sesuai mode toggle
+  const activeDaily     = showNoJukir ? data.abm_daily_no_jukir     : data.abm_daily;
+  const activeSnapshots = showNoJukir ? data.agent_snapshots_no_jukir : data.agent_snapshots;
+  const { sim_config }  = data;
+
+  const nDays   = activeDaily.length;
   const frame   = Math.min(currentFrame, nDays - 1);
-  const dayData = abm_daily[frame];
+  const dayData = activeDaily[frame];
 
   const storeAVec = useMemo(
     () => new THREE.Vector3(sim_config.store_a_x, 0, sim_config.store_a_y),
@@ -589,13 +593,13 @@ function Scene() {
   );
 
   const agentChoices = useMemo<AgentChoice[]>(
-    () => agent_snapshots.map((a) => resolveChoice(a, dayData, frame, nDays)),
-    [agent_snapshots, dayData, frame, nDays],
+    () => activeSnapshots.map((a) => resolveChoice(a, dayData, frame, nDays)),
+    [activeSnapshots, dayData, frame, nDays],
   );
 
   const agentVecs = useMemo<THREE.Vector3[]>(
-    () => agent_snapshots.map((a) => new THREE.Vector3(a.x, 0, a.y)),
-    [agent_snapshots],
+    () => activeSnapshots.map((a) => new THREE.Vector3(a.x, 0, a.y)),
+    [activeSnapshots],
   );
 
   const storeZ = sim_config.store_a_y;
@@ -611,7 +615,8 @@ function Scene() {
         label="A" wallColor={C.storeAWall} roofColor={C.storeARoof}
         revenue={dayData.revenue_a} visits={dayData.visits_a}
       />
-      <JukirFigure storePos={[sim_config.store_a_x, 0, storeZ]} />
+      {/* Jukir hanya muncul saat mode "ada jukir" */}
+      {!showNoJukir && <JukirFigure storePos={[sim_config.store_a_x, 0, storeZ]} />}
 
       <StoreBuilding
         position={[sim_config.store_b_x, 0, sim_config.store_b_y]}
@@ -619,7 +624,7 @@ function Scene() {
         revenue={dayData.revenue_b} visits={dayData.visits_b}
       />
 
-      {agent_snapshots.map((agent, i) => (
+      {activeSnapshots.map((agent, i) => (
         <AgentMesh
           key={agent.id}
           agent={agent}

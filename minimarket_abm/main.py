@@ -83,13 +83,16 @@ class CustomerAgent(mesa.Agent):
         # Jarak dalam meter, tidak dinormalisasi.
         # weight_distance (negatif kecil, e.g. -0.002) mengontrol
         # seberapa besar pengaruh jarak terhadap skor.
-        parking_fee_score = self.model.parking_fee / MAX_PURCHASE_AMOUNT
+        # has_illegal_parking (0 atau 1) mengalikan semua efek negatif jukir.
+        # Jika 0, suku aversion/fee/risk hilang dari skor → tidak ada dampak jukir.
+        jp = self.model.has_illegal_parking
+        parking_fee_score = (self.model.parking_fee / MAX_PURCHASE_AMOUNT) * jp
 
         score_a = (
             self.model.weight_distance * distance_to_a
-            + self.model.weight_parking_aversion * self.parking_aversion
+            + self.model.weight_parking_aversion * self.parking_aversion * jp
             + self.model.weight_parking_fee * parking_fee_score
-            + self.model.weight_risk * self.perceived_risk_a
+            + self.model.weight_risk * self.perceived_risk_a * jp
             + self.model.weight_attractiveness * self.model.attractiveness_A
         )
 
@@ -112,9 +115,8 @@ class CustomerAgent(mesa.Agent):
         self.model.daily_visits[self.choice] += 1
         self.model.daily_revenue[self.choice] += self.purchase_amount
 
-        if self.choice == "A":
-            # Probabilitas pengalaman buruk meningkat seiring parking_aversion
-            # dan relatif besarnya biaya parkir terhadap nilai maksimum pembelian.
+        if self.choice == "A" and jp:
+            # Pengalaman buruk hanya terjadi jika ada jukir.
             bad_experience_probability = min(
                 MAX_BAD_EXPERIENCE_PROBABILITY,
                 BASE_BAD_EXPERIENCE_PROBABILITY
@@ -155,6 +157,7 @@ class MiniMarket(mesa.Model):
         num_customers: int = 200,
         days: int = 60,
         market_radius: float = 500.0,
+        has_illegal_parking: int = 1,
         parking_fee: int = 2_000,
         distance_to_B: float = 500.0,
         attractiveness_A: float = 0.5,
@@ -180,6 +183,7 @@ class MiniMarket(mesa.Model):
 
         self.days = days
         self.market_radius = market_radius
+        self.has_illegal_parking = has_illegal_parking
         self.parking_fee = parking_fee
         self.distance_to_B = distance_to_B
         self.attractiveness_A = attractiveness_A

@@ -28,15 +28,28 @@ function StatCard({ label, value, accent }: { label: string; value: string | num
 }
 
 export function HUD() {
-  const { data, currentFrame } = useSimulationStore();
+  const { data, currentFrame, showNoJukir } = useSimulationStore();
   if (!data) return null;
 
-  const nDays = data.abm_daily.length;
+  const activeDaily = showNoJukir ? data.abm_daily_no_jukir : data.abm_daily;
+  const nDays = activeDaily.length;
   const frame = Math.min(currentFrame, nDays - 1);
-  const d: DayData = data.abm_daily[frame];
+  const d: DayData = activeDaily[frame];
 
   return (
-    <div className="absolute bottom-4 left-4 right-4 flex gap-2 pointer-events-none flex-wrap">
+    <div className="absolute bottom-4 left-4 right-4 flex gap-2 pointer-events-none flex-wrap items-end">
+      {/* Mode badge */}
+      <div className={`rounded-lg px-3 py-1.5 border-l-4 shadow-sm ${
+        showNoJukir
+          ? 'bg-green-50 border-green-500'
+          : 'bg-red-50 border-red-500'
+      }`}>
+        <div className="text-[9px] uppercase tracking-wider text-gray-500">Skenario</div>
+        <div className={`text-sm font-bold ${showNoJukir ? 'text-green-700' : 'text-red-700'}`}>
+          {showNoJukir ? '✅ Tanpa Jukir' : '🚫 Ada Jukir'}
+        </div>
+      </div>
+
       <StatCard label="Hari" value={`${frame + 1}/${nDays}`} accent="blue" />
       <StatCard label="Rev Toko A" value={fmtRp(d.revenue_a)} accent="red" />
       <StatCard label="Rev Toko B" value={fmtRp(d.revenue_b)} accent="green" />

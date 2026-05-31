@@ -1,7 +1,8 @@
 """
 api.py — FastAPI endpoint untuk ParkSim (pure ABM, tanpa DCM).
 
-POST /api/simulate  → jalankan ABM weighted-scoring+softmax, kembalikan hasil lengkap.
+POST /api/simulate  → jalankan dua skenario ABM (dengan jukir & tanpa jukir)
+                      dengan parameter identik kecuali has_illegal_parking.
 """
 
 from __future__ import annotations
@@ -12,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from main import MiniMarket
 
-app = FastAPI(title="ParkSim API", version="2.0.0")
+app = FastAPI(title="ParkSim API", version="3.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -54,7 +55,7 @@ class SimulateRequest(BaseModel):
     wom_strength: float = Field(default=0.05, ge=0.0, le=0.5)
     num_contacts: int = Field(default=3, ge=1, le=10)
 
-    # Bobot skor (semua negatif untuk distance/aversion/fee/risk, positif untuk attractiveness)
+    # Bobot skor
     weight_distance: float = Field(default=-0.002, ge=-0.02, le=0.0)
     weight_parking_aversion: float = Field(default=-1.2, ge=-5.0, le=0.0)
     weight_parking_fee: float = Field(default=-2.0, ge=-5.0, le=0.0)
@@ -64,23 +65,13 @@ class SimulateRequest(BaseModel):
     seed: int = Field(default=42)
 
 
-@app.get("/")
-def root():
-    return {"status": "ok", "service": "ParkSim API", "version": "2.0.0"}
-
-
-@app.get("/health")
-def health():
-    return {"status": "healthy"}
-
-
-@app.post("/api/simulate")
-def simulate(req: SimulateRequest):
-    model = MiniMarket(
+def build_model(req: SimulateRequest, has_illegal_parking: int) -> MiniMarket:
+    return MiniMarket(
         num_customers=req.n_agents,
         days=req.n_days,
         market_radius=req.market_radius,
         distance_to_B=req.distance_to_B,
+        has_illegal_parking=has_illegal_parking,
         parking_fee=req.parking_fee,
         attractiveness_A=req.attractiveness_A,
         attractiveness_B=req.attractiveness_B,
@@ -101,17 +92,14 @@ def simulate(req: SimulateRequest):
         seed=req.seed,
     )
 
-    history = model.run()  # DataFrame: index = hari (0-based)
 
-    # Konversi history DataFrame → abm_daily list
-    abm_daily = []
+def history_to_daily(history, n_agents: int) -> list[dict]:
+    result = []
     for i, row in history.iterrows():
         visits_a = int(row.get("Visits A", 0))
         visits_b = int(row.get("Visits B", 0))
-        total_shopping = visits_a + visits_b
-        no_buy = max(0, req.n_agents - total_shopping)
-
-        abm_daily.append({
+        no_buy = max(0, n_agents - visits_a - visits_b)
+        result.append({
             "day": int(i) + 1,
             "visits_a": visits_a,
             "visits_b": visits_b,
@@ -123,24 +111,14 @@ def simulate(req: SimulateRequest):
             "revenue_a": int(row.get("Revenue A", 0)),
             "revenue_b": int(row.get("Revenue B", 0)),
         })
+    return result
 
-    # Ekstrak agent snapshots dari state akhir model
-    #
-    # Penjelasan logika choice:
-    #   choice == None  →  agen tidak punya kebutuhan belanja hari ini
-    #                      (random() > shopping_need_probability)
-    #   choice == "A"   →  memilih Toko A (softmax probability_a menang)
-    #   choice == "B"   →  memilih Toko B (softmax probability_b menang)
-    #
-    # Tidak ada mekanisme "berniat ke toko lalu mundur karena jukir".
-    # Agen yang takut jukir hanya mendapat skor A yang lebih rendah →
-    # probabilitas softmax B naik → memilih B, bukan none.
-    agent_snapshots = []
+
+def extract_snapshots(model: MiniMarket) -> list[dict]:
+    snapshots = []
     for c in model.customers:
         choice = c.choice if c.choice is not None else "none"
-        no_buy_reason = "no_need" if choice == "none" else None
-
-        agent_snapshots.append({
+        snapshots.append({
             "id": int(c.unique_id),
             "x": float(c.x),
             "y": float(c.y),
@@ -148,10 +126,31 @@ def simulate(req: SimulateRequest):
             "parking_aversion": float(c.parking_aversion),
             "perceived_risk_a": float(c.perceived_risk_a),
             "had_bad_experience": bool(c.had_bad_experience),
-            "no_buy_reason": no_buy_reason,
+            "no_buy_reason": "no_need" if choice == "none" else None,
         })
+    return snapshots
 
-    # Model parameters untuk konteks frontend
+
+@app.get("/")
+def root():
+    return {"status": "ok", "service": "ParkSim API", "version": "3.0.0"}
+
+
+@app.get("/health")
+def health():
+    return {"status": "healthy"}
+
+
+@app.post("/api/simulate")
+def simulate(req: SimulateRequest):
+    # Skenario 1: Toko A dengan jukir (has_illegal_parking=1)
+    model_with = build_model(req, has_illegal_parking=1)
+    history_with = model_with.run()
+
+    # Skenario 2: Toko A tanpa jukir (has_illegal_parking=0), seed sama agar fair
+    model_without = build_model(req, has_illegal_parking=0)
+    history_without = model_without.run()
+
     model_params = {
         "weight_distance": req.weight_distance,
         "weight_parking_aversion": req.weight_parking_aversion,
@@ -171,15 +170,19 @@ def simulate(req: SimulateRequest):
         "n_agents": req.n_agents,
         "n_days": req.n_days,
         "market_radius": req.market_radius,
-        "store_a_x": float(model.store_a.x),
-        "store_a_y": float(model.store_a.y),
-        "store_b_x": float(model.store_b.x),
-        "store_b_y": float(model.store_b.y),
+        "store_a_x": float(model_with.store_a.x),
+        "store_a_y": float(model_with.store_a.y),
+        "store_b_x": float(model_with.store_b.x),
+        "store_b_y": float(model_with.store_b.y),
     }
 
     return {
-        "abm_daily": abm_daily,
-        "agent_snapshots": agent_snapshots,
+        # Skenario ADA jukir (default yang ditampilkan di 3D scene)
+        "abm_daily": history_to_daily(history_with, req.n_agents),
+        "agent_snapshots": extract_snapshots(model_with),
+        # Skenario TANPA jukir (untuk perbandingan di Charts)
+        "abm_daily_no_jukir": history_to_daily(history_without, req.n_agents),
+        "agent_snapshots_no_jukir": extract_snapshots(model_without),
         "model_params": model_params,
         "sim_config": sim_config,
     }

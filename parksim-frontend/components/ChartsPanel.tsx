@@ -566,6 +566,167 @@ function ChartPlaybackBar({ frame, nDays }: { frame: number; nDays: number }) {
   );
 }
 
+// ─── Chart Perbandingan: Revenue A (Ada Jukir vs Tanpa Jukir) ────────────────
+function ComparisonRevenueChart({ frame }: { frame: number }) {
+  const data = useSimulationStore((s) => s.data);
+  if (!data) return null;
+
+  // Merge dua skenario by day, hanya s.d. frame aktif
+  const withData    = data.abm_daily.slice(0, frame + 1);
+  const withoutData = data.abm_daily_no_jukir.slice(0, frame + 1);
+
+  let cumWith = 0, cumWithout = 0;
+  const merged = withData.map((d, i) => {
+    cumWith    += d.revenue_a;
+    cumWithout += withoutData[i]?.revenue_a ?? 0;
+    return {
+      day: d.day,
+      rev_a_dengan:  d.revenue_a,
+      rev_a_tanpa:   withoutData[i]?.revenue_a ?? 0,
+      cum_dengan:    cumWith,
+      cum_tanpa:     cumWithout,
+    };
+  });
+
+  const lastCumDengan = merged[merged.length - 1]?.cum_dengan ?? 0;
+  const lastCumTanpa  = merged[merged.length - 1]?.cum_tanpa  ?? 0;
+  const uplift = lastCumDengan > 0
+    ? (((lastCumTanpa - lastCumDengan) / lastCumDengan) * 100).toFixed(1)
+    : '—';
+
+  return (
+    <ChartCard
+      title="🔄 Perbandingan Revenue Toko A: Ada Jukir vs Tanpa Jukir"
+      subtitle="Membandingkan revenue Toko A pada kondisi ada juru parkir liar vs kondisi jukir dihilangkan (parameter lain identik)"
+      badge={
+        <span className={`flex-none text-[10px] font-semibold px-2 py-0.5 rounded-full border whitespace-nowrap ${
+          lastCumTanpa > lastCumDengan
+            ? 'bg-green-50 border-green-300 text-green-700'
+            : 'bg-gray-50 border-gray-200 text-gray-600'
+        }`}>
+          {lastCumTanpa > lastCumDengan ? `+${uplift}% tanpa jukir` : `Tidak signifikan`}
+        </span>
+      }
+    >
+      {/* Kumulatif */}
+      <p className="text-gray-500 text-[10px] mb-1 font-medium">Revenue Kumulatif Toko A (Rp)</p>
+      <ResponsiveContainer width="100%" height={200}>
+        <AreaChart data={merged} margin={{ top: 5, right: 20, bottom: 5, left: 10 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+          <XAxis dataKey="day" stroke="#d1d5db" tick={TICK}>
+            <Label value="Hari" position="insideBottom" offset={-2} style={{ fill: '#9ca3af', fontSize: 10 }} />
+          </XAxis>
+          <YAxis stroke="#d1d5db" tick={TICK} tickFormatter={fmtRp} />
+          <Tooltip {...TOOLTIP}
+            formatter={(v, name) => [`Rp ${fmtRp(Number(v))}`, name]}
+            labelFormatter={(l) => `Hari ke-${l}`}
+          />
+          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <Area dataKey="cum_dengan" name="Ada Jukir"    stroke="#ef4444" fill="#fecaca" fillOpacity={0.35} strokeWidth={2} isAnimationActive={false} />
+          <Area dataKey="cum_tanpa"  name="Tanpa Jukir"  stroke="#3b82f6" fill="#bfdbfe" fillOpacity={0.35} strokeWidth={2} isAnimationActive={false} strokeDasharray="6 3" />
+        </AreaChart>
+      </ResponsiveContainer>
+
+      {/* Harian */}
+      <p className="text-gray-500 text-[10px] mt-4 mb-1 font-medium">Revenue Harian Toko A (Rp)</p>
+      <ResponsiveContainer width="100%" height={180}>
+        <LineChart data={merged} margin={{ top: 5, right: 20, bottom: 5, left: 10 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+          <XAxis dataKey="day" stroke="#d1d5db" tick={TICK} />
+          <YAxis stroke="#d1d5db" tick={TICK} tickFormatter={fmtRp} />
+          <Tooltip {...TOOLTIP}
+            formatter={(v, name) => [`Rp ${fmtRp(Number(v))}`, name]}
+            labelFormatter={(l) => `Hari ke-${l}`}
+          />
+          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <Line dataKey="rev_a_dengan" name="Ada Jukir"   stroke="#ef4444" dot={false} strokeWidth={2} isAnimationActive={false} />
+          <Line dataKey="rev_a_tanpa"  name="Tanpa Jukir" stroke="#3b82f6" dot={false} strokeWidth={2} strokeDasharray="6 3" isAnimationActive={false} />
+        </LineChart>
+      </ResponsiveContainer>
+
+      {/* Ringkasan selisih */}
+      <div className="mt-4 grid grid-cols-3 gap-3">
+        {[
+          {
+            label: 'Rev A Ada Jukir (kumulatif)',
+            value: `Rp ${fmtRp(lastCumDengan)}`,
+            color: 'text-red-600', bg: 'bg-red-50 border-red-100',
+          },
+          {
+            label: 'Rev A Tanpa Jukir (kumulatif)',
+            value: `Rp ${fmtRp(lastCumTanpa)}`,
+            color: 'text-blue-600', bg: 'bg-blue-50 border-blue-100',
+          },
+          {
+            label: 'Potensi Revenue Hilang',
+            value: lastCumTanpa > lastCumDengan
+              ? `Rp ${fmtRp(lastCumTanpa - lastCumDengan)}`
+              : 'Tidak ada',
+            color: lastCumTanpa > lastCumDengan ? 'text-green-700' : 'text-gray-500',
+            bg: lastCumTanpa > lastCumDengan ? 'bg-green-50 border-green-100' : 'bg-gray-50 border-gray-100',
+          },
+        ].map((c) => (
+          <div key={c.label} className={`rounded-xl border ${c.bg} px-4 py-3`}>
+            <p className="text-gray-500 text-[9px] uppercase tracking-wider">{c.label}</p>
+            <p className={`text-base font-bold font-mono ${c.color} mt-0.5`}>{c.value}</p>
+          </div>
+        ))}
+      </div>
+    </ChartCard>
+  );
+}
+
+// ─── Chart Perbandingan Kunjungan A ──────────────────────────────────────────
+function ComparisonVisitChart({ frame }: { frame: number }) {
+  const data = useSimulationStore((s) => s.data);
+  if (!data) return null;
+
+  const withData    = data.abm_daily.slice(0, frame + 1);
+  const withoutData = data.abm_daily_no_jukir.slice(0, frame + 1);
+
+  const merged = withData.map((d, i) => ({
+    day: d.day,
+    visits_dengan: d.visits_a,
+    visits_tanpa:  withoutData[i]?.visits_a ?? 0,
+  }));
+
+  const avgDengan = merged.length
+    ? (merged.reduce((s, d) => s + d.visits_dengan, 0) / merged.length).toFixed(1) : '—';
+  const avgTanpa  = merged.length
+    ? (merged.reduce((s, d) => s + d.visits_tanpa,  0) / merged.length).toFixed(1) : '—';
+
+  return (
+    <ChartCard
+      title="👥 Perbandingan Kunjungan Toko A: Ada Jukir vs Tanpa Jukir"
+      subtitle="Jumlah agen yang memilih Toko A per hari pada dua skenario"
+      badge={
+        <div className="flex gap-2 flex-none">
+          <span className="text-[10px] bg-red-50 border border-red-200 text-red-700 font-mono font-semibold px-2 py-0.5 rounded-full">
+            Ada: {avgDengan}/hari
+          </span>
+          <span className="text-[10px] bg-blue-50 border border-blue-200 text-blue-700 font-mono font-semibold px-2 py-0.5 rounded-full">
+            Tanpa: {avgTanpa}/hari
+          </span>
+        </div>
+      }
+    >
+      <ResponsiveContainer width="100%" height={220}>
+        <LineChart data={merged} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+          <XAxis dataKey="day" stroke="#d1d5db" tick={TICK}>
+            <Label value="Hari" position="insideBottom" offset={-2} style={{ fill: '#9ca3af', fontSize: 10 }} />
+          </XAxis>
+          <YAxis stroke="#d1d5db" tick={TICK} />
+          <Tooltip {...TOOLTIP} labelFormatter={(l) => `Hari ke-${l}`} />
+          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <Line dataKey="visits_dengan" name="Ada Jukir"   stroke="#ef4444" dot={false} strokeWidth={2} isAnimationActive={false} />
+          <Line dataKey="visits_tanpa"  name="Tanpa Jukir" stroke="#3b82f6" dot={false} strokeWidth={2} strokeDasharray="6 3" isAnimationActive={false} />
+        </LineChart>
+      </ResponsiveContainer>
+    </ChartCard>
+  );
+}
+
 // ─── Main Export ─────────────────────────────────────────────────────────────
 export function ChartsPanel() {
   const data         = useSimulationStore((s) => s.data);
@@ -596,7 +757,7 @@ export function ChartsPanel() {
           <span className="text-xl">⚠️</span>
           <div>
             <p className="text-amber-800 text-xs font-semibold">
-              Revenue Toko A mulai kalah dari Toko B sejak Hari ke-{criticalDay}
+              Revenue Toko A (ada jukir) mulai kalah dari Toko B sejak Hari ke-{criticalDay}
             </p>
             <p className="text-amber-600 text-[10px] mt-0.5">
               WOM negatif dan akumulasi bad experience telah menggeser preferensi pelanggan ke Toko B.
@@ -605,22 +766,41 @@ export function ChartsPanel() {
         </div>
       )}
 
-      {/* Summary stats */}
+      {/* ── PERBANDINGAN ADA vs TANPA JUKIR (highlight utama) ── */}
       <div>
-        <h2 className="text-gray-700 text-xs font-semibold uppercase tracking-wider mb-3">
-          Ringkasan s.d. Hari {frame + 1} — {data.sim_config.n_agents} agen, total {nDays} hari
+        <h2 className="text-gray-700 text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
+          Analisis Dampak Juru Parkir Liar
+        </h2>
+        <div className="space-y-4">
+          <ComparisonRevenueChart frame={frame} />
+          <ComparisonVisitChart frame={frame} />
+        </div>
+      </div>
+
+      {/* Summary stats skenario aktif */}
+      <div>
+        <h2 className="text-gray-700 text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />
+          Ringkasan Skenario Ada Jukir — s.d. Hari {frame + 1}
         </h2>
         <SummaryCards visibleData={visibleData} frame={frame} nDays={nDays} />
       </div>
 
-      {/* Charts 2-col grid */}
-      <div className="grid grid-cols-2 gap-4">
-        <VisitChart {...chartProps} />
-        <MarketShareChart {...chartProps} />
-        <DailyRevenueChart {...chartProps} />
-        <CumulativeRevenueChart {...chartProps} />
-        <WOMChart {...chartProps} />
-        <RiskAversionChart {...chartProps} />
+      {/* Charts detail skenario ada jukir */}
+      <div>
+        <h2 className="text-gray-700 text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-gray-400 inline-block" />
+          Detail Dinamika Simulasi (Skenario Ada Jukir)
+        </h2>
+        <div className="grid grid-cols-2 gap-4">
+          <VisitChart {...chartProps} />
+          <MarketShareChart {...chartProps} />
+          <DailyRevenueChart {...chartProps} />
+          <CumulativeRevenueChart {...chartProps} />
+          <WOMChart {...chartProps} />
+          <RiskAversionChart {...chartProps} />
+        </div>
       </div>
 
       {/* Full-width charts */}
