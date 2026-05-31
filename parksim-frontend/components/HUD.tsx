@@ -8,21 +8,23 @@ function fmtRp(v: number) {
   return `Rp ${(v / 1000).toFixed(0)}rb`;
 }
 
-const CARDS: Record<string, { border: string; text: string; bg: string }> = {
-  blue:   { border: 'border-blue-400',   text: 'text-blue-700',   bg: 'bg-blue-50'   },
-  red:    { border: 'border-red-400',    text: 'text-red-700',    bg: 'bg-red-50'    },
-  green:  { border: 'border-green-500',  text: 'text-green-700',  bg: 'bg-green-50'  },
-  yellow: { border: 'border-yellow-400', text: 'text-yellow-700', bg: 'bg-yellow-50' },
-  orange: { border: 'border-orange-400', text: 'text-orange-700', bg: 'bg-orange-50' },
-  purple: { border: 'border-purple-400', text: 'text-purple-700', bg: 'bg-purple-50' },
-};
-
-function StatCard({ label, value, accent }: { label: string; value: string | number; accent: string }) {
-  const s = CARDS[accent] ?? CARDS.blue;
+function Chip({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: string | number;
+  highlight?: boolean;
+}) {
   return (
-    <div className={`${s.bg} border-l-2 ${s.border} rounded-lg px-3 py-1.5 min-w-[88px] shadow-sm`}>
-      <div className="text-gray-500 text-[9px] uppercase tracking-wider">{label}</div>
-      <div className={`text-sm font-bold font-mono ${s.text}`}>{value}</div>
+    <div className={`px-3 py-1.5 rounded border min-w-[80px] ${
+      highlight
+        ? 'bg-white border-slate-300 shadow-sm'
+        : 'bg-white/80 border-slate-200'
+    }`}>
+      <div className="text-slate-400 text-[9px] uppercase tracking-wider">{label}</div>
+      <div className="text-slate-800 text-sm font-semibold font-mono leading-tight">{value}</div>
     </div>
   );
 }
@@ -38,26 +40,27 @@ export function HUD() {
 
   return (
     <div className="absolute bottom-4 left-4 right-4 flex gap-2 pointer-events-none flex-wrap items-end">
-      {/* Mode badge */}
-      <div className={`rounded-lg px-3 py-1.5 border-l-4 shadow-sm ${
+
+      {/* Scenario badge */}
+      <div className={`px-3 py-1.5 rounded border ${
         showNoJukir
-          ? 'bg-green-50 border-green-500'
-          : 'bg-red-50 border-red-500'
+          ? 'bg-emerald-50 border-emerald-200'
+          : 'bg-red-50 border-red-200'
       }`}>
-        <div className="text-[9px] uppercase tracking-wider text-gray-500">Skenario</div>
-        <div className={`text-sm font-bold ${showNoJukir ? 'text-green-700' : 'text-red-700'}`}>
-          {showNoJukir ? '✅ Tanpa Jukir' : '🚫 Ada Jukir'}
+        <div className="text-[9px] uppercase tracking-wider text-slate-400">Skenario</div>
+        <div className={`text-sm font-semibold ${showNoJukir ? 'text-emerald-700' : 'text-red-700'}`}>
+          {showNoJukir ? 'Tanpa Jukir' : 'Ada Jukir'}
         </div>
       </div>
 
-      <StatCard label="Hari" value={`${frame + 1}/${nDays}`} accent="blue" />
-      <StatCard label="Rev Toko A" value={fmtRp(d.revenue_a)} accent="red" />
-      <StatCard label="Rev Toko B" value={fmtRp(d.revenue_b)} accent="green" />
-      <StatCard label="Kunjungan A" value={d.visits_a} accent="red" />
-      <StatCard label="Kunjungan B" value={d.visits_b} accent="green" />
-      <StatCard label="WOM" value={d.wom_messages} accent="yellow" />
-      <StatCard label="Bad Exp" value={d.bad_experiences} accent="orange" />
-      <StatCard label="Avg Risk A" value={d.avg_risk_a.toFixed(3)} accent="purple" />
+      <Chip label="Hari" value={`${frame + 1} / ${nDays}`} highlight />
+      <Chip label="Revenue A" value={fmtRp(d.revenue_a)} />
+      <Chip label="Revenue B" value={fmtRp(d.revenue_b)} />
+      <Chip label="Kunjungan A" value={d.visits_a} />
+      <Chip label="Kunjungan B" value={d.visits_b} />
+      <Chip label="WOM" value={d.wom_messages} />
+      <Chip label="Bad Exp" value={d.bad_experiences} />
+      <Chip label="Avg Risk A" value={d.avg_risk_a.toFixed(3)} />
     </div>
   );
 }

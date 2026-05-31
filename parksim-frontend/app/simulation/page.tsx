@@ -1,7 +1,5 @@
 'use client';
 
-'use client';
-
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { ParameterPanel } from '@/components/ParameterPanel';
@@ -15,14 +13,37 @@ const SimulationCanvas = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex-1 flex items-center justify-center bg-[#f0fdf4]">
-        <div className="text-green-700 text-sm animate-pulse font-medium">Memuat scene 3D…</div>
+      <div className="flex-1 flex items-center justify-center bg-slate-50">
+        <span className="text-slate-400 text-sm">Memuat scene 3D…</span>
       </div>
     ),
   },
 );
 
 type Tab = '3d' | 'charts';
+
+function PillButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-4 py-1.5 rounded text-xs font-medium transition-colors ${
+        active
+          ? 'bg-white text-slate-900 shadow-sm'
+          : 'text-slate-500 hover:text-slate-700'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
 
 function JukirToggle() {
   const { data, showNoJukir, toggleJukirMode } = useSimulationStore();
@@ -31,19 +52,16 @@ function JukirToggle() {
   return (
     <button
       onClick={toggleJukirMode}
-      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+      className={`flex items-center gap-2 px-3 py-1.5 rounded border text-xs font-medium transition-colors ${
         showNoJukir
-          ? 'bg-green-50 border-green-300 text-green-700 hover:bg-green-100'
-          : 'bg-red-50 border-red-300 text-red-700 hover:bg-red-100'
+          ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+          : 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100'
       }`}
-      title="Toggle kondisi jukir Toko A"
     >
-      <span className="text-base leading-none">{showNoJukir ? '✅' : '🚫'}</span>
-      <span>
-        Toko A:{' '}
-        <span className="font-bold">{showNoJukir ? 'TANPA Jukir' : 'ADA Jukir'}</span>
-      </span>
-      <span className={`w-1.5 h-1.5 rounded-full ${showNoJukir ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} />
+      <span
+        className={`w-1.5 h-1.5 rounded-full ${showNoJukir ? 'bg-emerald-500' : 'bg-red-500'}`}
+      />
+      Toko A — {showNoJukir ? 'Tanpa Jukir' : 'Ada Jukir'}
     </button>
   );
 }
@@ -53,15 +71,13 @@ function LoopToggle() {
   return (
     <button
       onClick={toggleLoopAnimation}
-      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+      className={`px-3 py-1.5 rounded border text-xs font-medium transition-colors ${
         loopAnimation
-          ? 'bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100'
-          : 'bg-gray-50 border-gray-300 text-gray-600 hover:bg-gray-100'
+          ? 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100'
+          : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
       }`}
-      title={loopAnimation ? 'Animasi loop — klik untuk mode sequential' : 'Animasi sequential — klik untuk mode loop'}
     >
-      <span className="text-base leading-none">{loopAnimation ? '🔁' : '1️⃣'}</span>
-      <span className="font-bold">{loopAnimation ? 'Loop' : 'Sekali'}</span>
+      Animasi: {loopAnimation ? 'Loop' : 'Sekali'}
     </button>
   );
 }
@@ -70,73 +86,55 @@ export default function SimulationPage() {
   const [activeTab, setActiveTab] = useState<Tab>('3d');
 
   return (
-    <div className="flex flex-col h-screen bg-[#f0fdf4] text-gray-900 overflow-hidden">
+    <div className="flex flex-col h-screen bg-slate-50 text-slate-900 overflow-hidden">
+
       {/* Header */}
-      <header className="flex items-center justify-between px-4 py-2 border-b border-green-200 bg-white/90 backdrop-blur z-10 flex-none shadow-sm">
-        <div className="flex items-center gap-3">
-          <a href="/" className="text-green-700 hover:text-green-900 text-sm font-medium transition-colors">
-            ← Beranda
+      <header className="flex-none flex items-center justify-between px-5 py-2.5 bg-white border-b border-slate-200 z-10">
+        <div className="flex items-center gap-4">
+          <a
+            href="/"
+            className="text-slate-400 hover:text-slate-700 text-xs transition-colors"
+          >
+            Beranda
           </a>
-          <span className="text-gray-300">|</span>
-          <span className="text-green-800 font-bold text-sm tracking-wide">ParkSim</span>
-          <span className="text-gray-400 text-xs hidden xl:block">Simulasi Tukang Parkir Liar × Revenue Minimarket</span>
+          <span className="text-slate-200 select-none">/</span>
+          <span className="text-slate-800 font-semibold text-sm">ParkSim</span>
         </div>
 
         {/* Tab switcher */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
-            <button
-              onClick={() => setActiveTab('3d')}
-              className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-                activeTab === '3d'
-                  ? 'bg-white text-green-700 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              🌍 3D Scene
-            </button>
-            <button
-              onClick={() => setActiveTab('charts')}
-              className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-                activeTab === 'charts'
-                  ? 'bg-white text-blue-700 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              📊 Charts & Analisis
-            </button>
+          <div className="flex items-center gap-0.5 bg-slate-100 rounded p-0.5">
+            <PillButton active={activeTab === '3d'} onClick={() => setActiveTab('3d')}>
+              Simulasi 3D
+            </PillButton>
+            <PillButton active={activeTab === 'charts'} onClick={() => setActiveTab('charts')}>
+              Analisis
+            </PillButton>
           </div>
 
-          {/* Toggle animasi — selalu tampil */}
           <LoopToggle />
-          {/* Toggle jukir — hanya tampil di tab 3D */}
           {activeTab === '3d' && <JukirToggle />}
         </div>
 
         <div className="flex items-center gap-3">
           {activeTab === '3d' && (
-            <span className="text-gray-400 text-[10px] bg-gray-100 rounded px-2 py-1 font-mono hidden xl:block">
-              WASD/↑↓←→ gerak · Q/E naik/turun · scroll zoom · drag orbit
+            <span className="hidden xl:block text-slate-400 text-[10px] font-mono bg-slate-50 border border-slate-200 rounded px-2 py-1">
+              WASD · Q/E naik/turun · scroll zoom · drag orbit
             </span>
           )}
-          <span className="text-gray-400 text-xs">TPS DTETI UGM 2025</span>
         </div>
       </header>
 
-      {/* Main layout */}
+      {/* Body */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar — selalu tampil */}
         <ParameterPanel />
 
-        {/* Content area */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* 3D tab */}
-          <div className={`flex-1 flex flex-col overflow-hidden ${activeTab === '3d' ? 'flex' : 'hidden'}`}>
-            <div className="flex-1 relative">
-              <SimulationCanvas />
-              <HUD />
-              <AgentLegend />
-            </div>
+          <div className={`flex-1 relative overflow-hidden ${activeTab === '3d' ? 'flex flex-col' : 'hidden'}`}>
+            <SimulationCanvas />
+            <HUD />
+            <AgentLegend />
           </div>
 
           {/* Charts tab */}
