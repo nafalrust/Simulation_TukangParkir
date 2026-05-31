@@ -727,6 +727,253 @@ function ComparisonVisitChart({ frame }: { frame: number }) {
   );
 }
 
+// ─── Chart Perbandingan: WOM & Bad Experience ────────────────────────────────
+function ComparisonWOMChart({ frame }: { frame: number }) {
+  const data = useSimulationStore((s) => s.data);
+  if (!data) return null;
+
+  const withData    = data.abm_daily.slice(0, frame + 1);
+  const withoutData = data.abm_daily_no_jukir.slice(0, frame + 1);
+
+  const merged = withData.map((d, i) => ({
+    day: d.day,
+    wom_dengan:  d.wom_messages,
+    wom_tanpa:   withoutData[i]?.wom_messages ?? 0,
+    bad_dengan:  d.bad_experiences,
+    bad_tanpa:   withoutData[i]?.bad_experiences ?? 0,
+  }));
+
+  const totalWomDengan = merged.reduce((s, d) => s + d.wom_dengan, 0);
+  const totalWomTanpa  = merged.reduce((s, d) => s + d.wom_tanpa,  0);
+  const totalBadDengan = merged.reduce((s, d) => s + d.bad_dengan, 0);
+  const totalBadTanpa  = merged.reduce((s, d) => s + d.bad_tanpa,  0);
+
+  return (
+    <ChartCard
+      title="📣 Perbandingan WOM & Bad Experience: Ada Jukir vs Tanpa Jukir"
+      subtitle="Seberapa besar dampak sosial (penyebaran cerita negatif & pengalaman buruk) yang hilang jika jukir dihapus"
+      badge={
+        <div className="flex gap-2 flex-none">
+          <span className="text-[10px] bg-red-50 border border-red-200 text-red-700 font-mono font-semibold px-2 py-0.5 rounded-full">
+            WOM ada: {totalWomDengan}
+          </span>
+          <span className="text-[10px] bg-blue-50 border border-blue-200 text-blue-700 font-mono font-semibold px-2 py-0.5 rounded-full">
+            WOM tanpa: {totalWomTanpa}
+          </span>
+        </div>
+      }
+    >
+      <p className="text-gray-500 text-[10px] mb-1 font-medium">Pesan WOM per hari</p>
+      <ResponsiveContainer width="100%" height={190}>
+        <LineChart data={merged} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+          <XAxis dataKey="day" stroke="#d1d5db" tick={TICK}>
+            <Label value="Hari" position="insideBottom" offset={-2} style={{ fill: '#9ca3af', fontSize: 10 }} />
+          </XAxis>
+          <YAxis stroke="#d1d5db" tick={TICK} />
+          <Tooltip {...TOOLTIP} labelFormatter={(l) => `Hari ke-${l}`} />
+          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <Line dataKey="wom_dengan" name="WOM — Ada Jukir"   stroke="#f59e0b" dot={false} strokeWidth={2} isAnimationActive={false} />
+          <Line dataKey="wom_tanpa"  name="WOM — Tanpa Jukir" stroke="#3b82f6" dot={false} strokeWidth={2} strokeDasharray="6 3" isAnimationActive={false} />
+        </LineChart>
+      </ResponsiveContainer>
+
+      <p className="text-gray-500 text-[10px] mt-3 mb-1 font-medium">Bad Experience per hari</p>
+      <ResponsiveContainer width="100%" height={190}>
+        <LineChart data={merged} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+          <XAxis dataKey="day" stroke="#d1d5db" tick={TICK} />
+          <YAxis stroke="#d1d5db" tick={TICK} />
+          <Tooltip {...TOOLTIP} labelFormatter={(l) => `Hari ke-${l}`} />
+          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <Line dataKey="bad_dengan" name="Bad Exp — Ada Jukir"   stroke="#f97316" dot={false} strokeWidth={2} isAnimationActive={false} />
+          <Line dataKey="bad_tanpa"  name="Bad Exp — Tanpa Jukir" stroke="#3b82f6" dot={false} strokeWidth={2} strokeDasharray="6 3" isAnimationActive={false} />
+        </LineChart>
+      </ResponsiveContainer>
+
+      <div className="mt-4 grid grid-cols-4 gap-3">
+        {[
+          { label: 'Total WOM Ada Jukir',   value: totalWomDengan.toLocaleString(), color: 'text-yellow-700', bg: 'bg-yellow-50 border-yellow-100' },
+          { label: 'Total WOM Tanpa Jukir',  value: totalWomTanpa.toLocaleString(),  color: 'text-blue-600',   bg: 'bg-blue-50 border-blue-100'     },
+          { label: 'Total Bad Exp Ada Jukir',   value: totalBadDengan.toLocaleString(), color: 'text-orange-700', bg: 'bg-orange-50 border-orange-100' },
+          { label: 'Total Bad Exp Tanpa Jukir', value: totalBadTanpa.toLocaleString(),  color: 'text-blue-600',   bg: 'bg-blue-50 border-blue-100'     },
+        ].map((c) => (
+          <div key={c.label} className={`rounded-xl border ${c.bg} px-3 py-2.5`}>
+            <p className="text-gray-500 text-[9px] uppercase tracking-wider">{c.label}</p>
+            <p className={`text-base font-bold font-mono ${c.color} mt-0.5`}>{c.value}</p>
+          </div>
+        ))}
+      </div>
+    </ChartCard>
+  );
+}
+
+// ─── Chart Perbandingan: Perceived Risk & Parking Aversion ───────────────────
+function ComparisonRiskChart({ frame }: { frame: number }) {
+  const data = useSimulationStore((s) => s.data);
+  if (!data) return null;
+
+  const withData    = data.abm_daily.slice(0, frame + 1);
+  const withoutData = data.abm_daily_no_jukir.slice(0, frame + 1);
+
+  const merged = withData.map((d, i) => ({
+    day: d.day,
+    risk_dengan:    d.avg_risk_a,
+    risk_tanpa:     withoutData[i]?.avg_risk_a ?? 0,
+    avers_dengan:   d.avg_parking_aversion,
+    avers_tanpa:    withoutData[i]?.avg_parking_aversion ?? 0,
+  }));
+
+  const lastRiskDengan  = merged[merged.length - 1]?.risk_dengan  ?? 0;
+  const lastRiskTanpa   = merged[merged.length - 1]?.risk_tanpa   ?? 0;
+  const lastAversDengan = merged[merged.length - 1]?.avers_dengan ?? 0;
+  const lastAversTanpa  = merged[merged.length - 1]?.avers_tanpa  ?? 0;
+
+  return (
+    <ChartCard
+      title="🧠 Perbandingan Perceived Risk & Parking Aversion: Ada Jukir vs Tanpa Jukir"
+      subtitle="Dinamika persepsi risiko dan aversion agen — tanpa jukir keduanya seharusnya mendekati nilai awal"
+      badge={
+        <div className="flex gap-2 flex-none">
+          <span className="text-[10px] bg-purple-50 border border-purple-200 text-purple-700 font-mono font-semibold px-2 py-0.5 rounded-full">
+            Risk ada: {lastRiskDengan.toFixed(3)}
+          </span>
+          <span className="text-[10px] bg-blue-50 border border-blue-200 text-blue-700 font-mono font-semibold px-2 py-0.5 rounded-full">
+            Risk tanpa: {lastRiskTanpa.toFixed(3)}
+          </span>
+        </div>
+      }
+    >
+      <p className="text-gray-500 text-[10px] mb-1 font-medium">Avg Perceived Risk A (0–1)</p>
+      <ResponsiveContainer width="100%" height={190}>
+        <AreaChart data={merged} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+          <XAxis dataKey="day" stroke="#d1d5db" tick={TICK}>
+            <Label value="Hari" position="insideBottom" offset={-2} style={{ fill: '#9ca3af', fontSize: 10 }} />
+          </XAxis>
+          <YAxis stroke="#d1d5db" tick={TICK} domain={[0, 1]} tickFormatter={(v) => v.toFixed(2)} />
+          <Tooltip {...TOOLTIP}
+            formatter={(v, name) => [Number(v).toFixed(4), name]}
+            labelFormatter={(l) => `Hari ke-${l}`}
+          />
+          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <ReferenceLine y={0.5} stroke="#a78bfa" strokeDasharray="4 4">
+            <Label value="0.5" position="right" style={{ fill: '#a78bfa', fontSize: 9 }} />
+          </ReferenceLine>
+          <Area dataKey="risk_dengan" name="Risk A — Ada Jukir"   stroke="#a78bfa" fill="#ede9fe" fillOpacity={0.4} strokeWidth={2} isAnimationActive={false} />
+          <Area dataKey="risk_tanpa"  name="Risk A — Tanpa Jukir" stroke="#3b82f6" fill="#bfdbfe" fillOpacity={0.2} strokeWidth={2} strokeDasharray="6 3" isAnimationActive={false} />
+        </AreaChart>
+      </ResponsiveContainer>
+
+      <p className="text-gray-500 text-[10px] mt-3 mb-1 font-medium">Avg Parking Aversion (0–1)</p>
+      <ResponsiveContainer width="100%" height={190}>
+        <AreaChart data={merged} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+          <XAxis dataKey="day" stroke="#d1d5db" tick={TICK} />
+          <YAxis stroke="#d1d5db" tick={TICK} domain={[0, 1]} tickFormatter={(v) => v.toFixed(2)} />
+          <Tooltip {...TOOLTIP}
+            formatter={(v, name) => [Number(v).toFixed(4), name]}
+            labelFormatter={(l) => `Hari ke-${l}`}
+          />
+          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <Area dataKey="avers_dengan" name="Aversion — Ada Jukir"   stroke="#f97316" fill="#fed7aa" fillOpacity={0.4} strokeWidth={2} isAnimationActive={false} />
+          <Area dataKey="avers_tanpa"  name="Aversion — Tanpa Jukir" stroke="#3b82f6" fill="#bfdbfe" fillOpacity={0.2} strokeWidth={2} strokeDasharray="6 3" isAnimationActive={false} />
+        </AreaChart>
+      </ResponsiveContainer>
+
+      <div className="mt-4 grid grid-cols-4 gap-3">
+        {[
+          { label: 'Risk Akhir Ada Jukir',    value: lastRiskDengan.toFixed(3),  color: 'text-purple-700', bg: 'bg-purple-50 border-purple-100' },
+          { label: 'Risk Akhir Tanpa Jukir',  value: lastRiskTanpa.toFixed(3),   color: 'text-blue-600',   bg: 'bg-blue-50 border-blue-100'     },
+          { label: 'Aversion Akhir Ada Jukir',   value: lastAversDengan.toFixed(3), color: 'text-orange-700', bg: 'bg-orange-50 border-orange-100' },
+          { label: 'Aversion Akhir Tanpa Jukir', value: lastAversTanpa.toFixed(3),  color: 'text-blue-600',   bg: 'bg-blue-50 border-blue-100'     },
+        ].map((c) => (
+          <div key={c.label} className={`rounded-xl border ${c.bg} px-3 py-2.5`}>
+            <p className="text-gray-500 text-[9px] uppercase tracking-wider">{c.label}</p>
+            <p className={`text-base font-bold font-mono ${c.color} mt-0.5`}>{c.value}</p>
+          </div>
+        ))}
+      </div>
+    </ChartCard>
+  );
+}
+
+// ─── Chart Perbandingan: Market Share Toko A ─────────────────────────────────
+function ComparisonMarketShareChart({ frame }: { frame: number }) {
+  const data = useSimulationStore((s) => s.data);
+  if (!data) return null;
+
+  const withData    = data.abm_daily.slice(0, frame + 1);
+  const withoutData = data.abm_daily_no_jukir.slice(0, frame + 1);
+
+  const merged = withData.map((d, i) => {
+    const totalDengan = d.visits_a + d.visits_b || 1;
+    const dNoJukir    = withoutData[i];
+    const totalTanpa  = dNoJukir ? (dNoJukir.visits_a + dNoJukir.visits_b || 1) : 1;
+    return {
+      day: d.day,
+      share_a_dengan: Math.round((d.visits_a / totalDengan) * 100),
+      share_a_tanpa:  dNoJukir ? Math.round((dNoJukir.visits_a / totalTanpa) * 100) : 0,
+    };
+  });
+
+  const lastDengan = merged[merged.length - 1]?.share_a_dengan ?? 0;
+  const lastTanpa  = merged[merged.length - 1]?.share_a_tanpa  ?? 0;
+  const avgDengan  = merged.length ? Math.round(merged.reduce((s, d) => s + d.share_a_dengan, 0) / merged.length) : 0;
+  const avgTanpa   = merged.length ? Math.round(merged.reduce((s, d) => s + d.share_a_tanpa,  0) / merged.length) : 0;
+
+  return (
+    <ChartCard
+      title="📈 Perbandingan Market Share Toko A: Ada Jukir vs Tanpa Jukir"
+      subtitle="Proporsi kunjungan ke Toko A dari total agen yang berbelanja — apakah Toko A kembali dominan tanpa jukir?"
+      badge={
+        <div className="flex gap-2 flex-none">
+          <span className="text-[10px] bg-red-50 border border-red-200 text-red-700 font-mono font-semibold px-2 py-0.5 rounded-full">
+            Ada: {lastDengan}%
+          </span>
+          <span className="text-[10px] bg-blue-50 border border-blue-200 text-blue-700 font-mono font-semibold px-2 py-0.5 rounded-full">
+            Tanpa: {lastTanpa}%
+          </span>
+        </div>
+      }
+    >
+      <ResponsiveContainer width="100%" height={220}>
+        <LineChart data={merged} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+          <XAxis dataKey="day" stroke="#d1d5db" tick={TICK}>
+            <Label value="Hari" position="insideBottom" offset={-2} style={{ fill: '#9ca3af', fontSize: 10 }} />
+          </XAxis>
+          <YAxis stroke="#d1d5db" tick={TICK} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+          <Tooltip {...TOOLTIP}
+            formatter={(v) => [`${v}%`]}
+            labelFormatter={(l) => `Hari ke-${l}`}
+          />
+          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <ReferenceLine y={50} stroke="#94a3b8" strokeDasharray="4 4">
+            <Label value="50%" position="right" style={{ fill: '#94a3b8', fontSize: 9 }} />
+          </ReferenceLine>
+          <Line dataKey="share_a_dengan" name="Share A — Ada Jukir"   stroke="#ef4444" dot={false} strokeWidth={2} isAnimationActive={false} />
+          <Line dataKey="share_a_tanpa"  name="Share A — Tanpa Jukir" stroke="#3b82f6" dot={false} strokeWidth={2} strokeDasharray="6 3" isAnimationActive={false} />
+        </LineChart>
+      </ResponsiveContainer>
+
+      <div className="mt-4 grid grid-cols-4 gap-3">
+        {[
+          { label: 'Share A Akhir Ada Jukir',    value: `${lastDengan}%`,  color: 'text-red-600',  bg: 'bg-red-50 border-red-100'   },
+          { label: 'Share A Akhir Tanpa Jukir',  value: `${lastTanpa}%`,   color: 'text-blue-600', bg: 'bg-blue-50 border-blue-100' },
+          { label: 'Rata-rata Share Ada Jukir',   value: `${avgDengan}%`,   color: 'text-red-500',  bg: 'bg-red-50 border-red-100'   },
+          { label: 'Rata-rata Share Tanpa Jukir', value: `${avgTanpa}%`,    color: 'text-blue-500', bg: 'bg-blue-50 border-blue-100' },
+        ].map((c) => (
+          <div key={c.label} className={`rounded-xl border ${c.bg} px-3 py-2.5`}>
+            <p className="text-gray-500 text-[9px] uppercase tracking-wider">{c.label}</p>
+            <p className={`text-base font-bold font-mono ${c.color} mt-0.5`}>{c.value}</p>
+          </div>
+        ))}
+      </div>
+    </ChartCard>
+  );
+}
+
 // ─── Main Export ─────────────────────────────────────────────────────────────
 export function ChartsPanel() {
   const data         = useSimulationStore((s) => s.data);
@@ -775,6 +1022,9 @@ export function ChartsPanel() {
         <div className="space-y-4">
           <ComparisonRevenueChart frame={frame} />
           <ComparisonVisitChart frame={frame} />
+          <ComparisonMarketShareChart frame={frame} />
+          <ComparisonWOMChart frame={frame} />
+          <ComparisonRiskChart frame={frame} />
         </div>
       </div>
 
