@@ -86,13 +86,19 @@ export interface SimConfig {
   store_b_y: number;
 }
 
+// Pilihan tiap agent per hari: array sepanjang n_days, tiap elemen adalah
+// Record<customer_id_string, "A"|"B">. Agent yang tidak belanja hari itu tidak muncul (= "stay").
+export type AgentChoicesPerDay = Record<string, 'A' | 'B'>[];
+
 export interface SimulateResponse {
   // Skenario ADA jukir
   abm_daily: DayData[];
   agent_snapshots: AgentSnapshot[];
+  agent_choices_per_day: AgentChoicesPerDay;
   // Skenario TANPA jukir (perbandingan)
   abm_daily_no_jukir: DayData[];
   agent_snapshots_no_jukir: AgentSnapshot[];
+  agent_choices_per_day_no_jukir: AgentChoicesPerDay;
   model_params: ModelParams;
   sim_config: SimConfig;
 }

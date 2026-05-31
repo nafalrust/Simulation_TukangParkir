@@ -207,18 +207,22 @@ class MiniMarket(mesa.Model):
         self.store_b = Store("B", distance_to_B, 0.0, has_illegal_parking=False)
 
         self.customers: list[CustomerAgent] = []
-        for _ in range(num_customers):
-            self.customers.append(
-                CustomerAgent(
-                    model=self,
-                    x=self.random.uniform(-market_radius, distance_to_B + market_radius),
-                    y=self.random.uniform(-market_radius, market_radius),
-                    parking_aversion=min(
-                        1.0,
-                        max(0.0, self.random.uniform(parking_aversion - 0.2, parking_aversion + 0.2)),
-                    ),
-                )
+        for customer_id in range(num_customers):
+            customer = CustomerAgent(
+                model=self,
+                x=self.random.uniform(-market_radius, distance_to_B + market_radius),
+                y=self.random.uniform(-market_radius, market_radius),
+                parking_aversion=min(
+                    1.0,
+                    max(0.0, self.random.uniform(parking_aversion - 0.2, parking_aversion + 0.2)),
+                ),
             )
+            customer.customer_id = customer_id
+            self.customers.append(customer)
+
+        # Riwayat pilihan tiap agent per hari: list[dict[int, str]]
+        # Diisi setiap model.step(), dibaca api.py untuk visualisasi akurat.
+        self.daily_choices_history: list[dict[int, str]] = []
 
         self.daily_visits = {"A": 0, "B": 0}
         self.daily_revenue = {"A": 0, "B": 0}
@@ -270,6 +274,14 @@ class MiniMarket(mesa.Model):
                 self.daily_wom_messages += 1
 
         self.datacollector.collect(self)
+
+        # Rekam pilihan tiap agent hari ini untuk visualisasi per-agent akurat
+        day_choices: dict[int, str] = {}
+        for c in self.customers:
+            if c.choice is not None:
+                day_choices[c.customer_id] = c.choice
+            # agent yang tidak belanja (choice=None) tidak dimasukkan → berarti "stay"
+        self.daily_choices_history.append(day_choices)
 
     def run(self) -> pd.DataFrame:
         for _ in range(self.days):

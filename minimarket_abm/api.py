@@ -114,12 +114,24 @@ def history_to_daily(history, n_agents: int) -> list[dict]:
     return result
 
 
+def extract_choices_per_day(model: MiniMarket) -> list[dict[str, str]]:
+    """
+    Konversi daily_choices_history (list[dict[int, str]]) ke format JSON-safe.
+    Key dikonversi ke string karena JSON hanya mendukung string key.
+    Nilai: "A", "B", atau tidak ada key (berarti "stay").
+    """
+    return [
+        {str(cid): choice for cid, choice in day.items()}
+        for day in model.daily_choices_history
+    ]
+
+
 def extract_snapshots(model: MiniMarket) -> list[dict]:
     snapshots = []
     for c in model.customers:
         choice = c.choice if c.choice is not None else "none"
         snapshots.append({
-            "id": int(c.unique_id),
+            "id": int(c.customer_id),
             "x": float(c.x),
             "y": float(c.y),
             "choice": choice,
@@ -180,9 +192,11 @@ def simulate(req: SimulateRequest):
         # Skenario ADA jukir (default yang ditampilkan di 3D scene)
         "abm_daily": history_to_daily(history_with, req.n_agents),
         "agent_snapshots": extract_snapshots(model_with),
+        "agent_choices_per_day": extract_choices_per_day(model_with),
         # Skenario TANPA jukir (untuk perbandingan di Charts)
         "abm_daily_no_jukir": history_to_daily(history_without, req.n_agents),
         "agent_snapshots_no_jukir": extract_snapshots(model_without),
+        "agent_choices_per_day_no_jukir": extract_choices_per_day(model_without),
         "model_params": model_params,
         "sim_config": sim_config,
     }

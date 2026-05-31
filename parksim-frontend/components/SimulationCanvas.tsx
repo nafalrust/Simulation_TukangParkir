@@ -5,7 +5,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Billboard, Text } from '@react-three/drei';
 import * as THREE from 'three';
 import { useSimulationStore } from '@/lib/simulationStore';
-import { AgentSnapshot, DayData } from '@/lib/api';
+import { AgentSnapshot, AgentChoicesPerDay } from '@/lib/api';
 
 // Shared mutable ref: phase [0,1] kemajuan hari saat ini.
 // Diisi PlaybackController, dibaca AgentMesh — tanpa useState agar tidak re-render.
@@ -30,31 +30,25 @@ const C = {
   bg:          '#f0fdf4',
 };
 
-function fract(x: number) { return x - Math.floor(x); }
-
 // AgentChoice hanya 3 state sesuai model Python:
 // 'A'    → berbelanja ke Toko A
 // 'B'    → berbelanja ke Toko B
 // 'stay' → tidak keluar (shopping_need_probability tidak terpenuhi)
 type AgentChoice = 'A' | 'B' | 'stay';
 
-function resolveChoice(
-  agent: AgentSnapshot,
-  dayData: DayData,
+// Lookup langsung dari data simulasi Python.
+// agent_choices_per_day[frame] = Record<customer_id_string, "A"|"B">
+// Agent yang tidak ada di dict = tidak belanja hari itu = "stay".
+function resolveChoiceFromData(
+  customerId: number,
+  choicesPerDay: AgentChoicesPerDay,
   frame: number,
-  nDays: number,
 ): AgentChoice {
-  if (frame >= nDays - 1) {
-    if (agent.choice === 'A') return 'A';
-    if (agent.choice === 'B') return 'B';
-    return 'stay';   // no_buy_reason selalu "no_need" sesuai model Python
-  }
-  const total = dayData.visits_a + dayData.visits_b + dayData.no_buy || 1;
-  const pA = dayData.visits_a / total;
-  const pB = dayData.visits_b / total;
-  const r  = fract(Math.sin(agent.id * 127.1 + frame * 311.7) * 43758.5453);
-  if (r < pA) return 'A';
-  if (r < pA + pB) return 'B';
+  const dayChoices = choicesPerDay[frame];
+  if (!dayChoices) return 'stay';
+  const choice = dayChoices[String(customerId)];
+  if (choice === 'A') return 'A';
+  if (choice === 'B') return 'B';
   return 'stay';
 }
 
@@ -611,9 +605,10 @@ function Scene() {
   if (!data) return null;
 
   // Pilih dataset sesuai mode toggle
-  const activeDaily     = showNoJukir ? data.abm_daily_no_jukir     : data.abm_daily;
-  const activeSnapshots = showNoJukir ? data.agent_snapshots_no_jukir : data.agent_snapshots;
-  const { sim_config }  = data;
+  const activeDaily       = showNoJukir ? data.abm_daily_no_jukir           : data.abm_daily;
+  const activeSnapshots   = showNoJukir ? data.agent_snapshots_no_jukir     : data.agent_snapshots;
+  const activeChoicesPerDay = showNoJukir ? data.agent_choices_per_day_no_jukir : data.agent_choices_per_day;
+  const { sim_config }    = data;
 
   const nDays   = activeDaily.length;
   const frame   = Math.min(currentFrame, nDays - 1);
@@ -628,9 +623,12 @@ function Scene() {
     [sim_config.store_b_x, sim_config.store_b_y],
   );
 
+  // Lookup langsung dari data simulasi Python — 100% akurat, tanpa pseudo-random
   const agentChoices = useMemo<AgentChoice[]>(
-    () => activeSnapshots.map((a) => resolveChoice(a, dayData, frame, nDays)),
-    [activeSnapshots, dayData, frame, nDays],
+    () => activeSnapshots.map((a) =>
+      resolveChoiceFromData(a.id, activeChoicesPerDay, frame)
+    ),
+    [activeSnapshots, activeChoicesPerDay, frame],
   );
 
   const agentVecs = useMemo<THREE.Vector3[]>(
