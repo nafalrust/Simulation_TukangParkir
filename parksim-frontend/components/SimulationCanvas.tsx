@@ -7,6 +7,10 @@ import * as THREE from 'three';
 import { useSimulationStore } from '@/lib/simulationStore';
 import { AgentSnapshot, DayData } from '@/lib/api';
 
+// Shared mutable ref: phase [0,1] kemajuan hari saat ini.
+// Diisi PlaybackController, dibaca AgentMesh — tanpa useState agar tidak re-render.
+const dayPhaseRef = { current: 0 };
+
 // ─── Palette siang hari (SimCity terang) ──────────────────────────────────────
 const C = {
   agentA:      '#dc2626',
@@ -251,13 +255,14 @@ function JukirFigure({ storePos }: { storePos: [number, number, number] }) {
 }
 
 // ─── Agent Mesh (animasi murni via useRef + useFrame) ─────────────────────────
-// animationSpeed: 0.05 (sangat lambat) – 2.0 (cepat), dari Zustand store
-function AgentMesh({ agent, choice, storeAPos, storeBPos, animationSpeed }: {
+// loopAnimation=true  → siklus loop terus (seperti semula)
+// loopAnimation=false → animasi dikendalikan dayPhaseRef [0,1]; sekali jalan, diam di home
+function AgentMesh({ agent, choice, storeAPos, storeBPos, loopAnimation }: {
   agent: AgentSnapshot;
   choice: AgentChoice;
   storeAPos: THREE.Vector3;
   storeBPos: THREE.Vector3;
-  animationSpeed: number;
+  loopAnimation: boolean;
 }) {
   const groupRef = useRef<THREE.Group>(null!);
   const ringRef  = useRef<THREE.Mesh>(null!);
@@ -278,16 +283,24 @@ function AgentMesh({ agent, choice, storeAPos, storeBPos, animationSpeed }: {
     const t = clock.getElapsedTime();
 
     if (choice === 'stay') {
-      // Diam di tempat dengan idle bobbing halus
       groupRef.current.position.set(home.x, bodyH + Math.sin(t * 1.2 + agent.id) * 0.3, home.z);
       return;
     }
 
-    // Siklus perjalanan: jalan ke toko → berhenti sebentar → kembali ke rumah
-    // animationSpeed mengontrol kecepatan siklus
-    const baseSpeed = 0.33 * animationSpeed;
-    const cycle     = ((t * baseSpeed + agent.id * 0.17) % 1 + 1) % 1;
+    let cycle: number;
 
+    if (loopAnimation) {
+      // Mode loop: siklus berdasarkan waktu (perilaku semula)
+      const baseSpeed = 0.33;
+      cycle = ((t * baseSpeed + agent.id * 0.17) % 1 + 1) % 1;
+    } else {
+      // Mode sequential: phase dikendalikan PlaybackController
+      // Tiap agent diberi offset kecil agar tidak semua berangkat bersamaan
+      const offset = (agent.id % 20) / 20 * 0.15; // spread 0–15% of cycle
+      cycle = Math.min(dayPhaseRef.current + offset, 1.0);
+    }
+
+    // Siklus: [0,0.45] jalan ke toko · [0.45,0.60] di toko · [0.60,1.0] kembali ke home
     if (cycle < 0.45) {
       tmpPos.lerpVectors(home, target, cycle / 0.45);
     } else if (cycle < 0.60) {
@@ -542,15 +555,38 @@ function WASDCamera() {
 }
 
 // ─── Playback Controller ──────────────────────────────────────────────────────
+// Sequential mode: satu hari = satu siklus penuh animasi (pergi → toko → kembali).
+// dayPhaseRef diisi di sini [0,1]; saat mencapai 1.0, advance ke hari berikutnya
+// lalu reset ke 0 agar agent mulai dari rumah.
 function PlaybackController() {
-  const { isPlaying, playbackSpeed, advanceFrame } = useSimulationStore();
+  const { isPlaying, playbackSpeed, loopAnimation, advanceFrame } = useSimulationStore();
   const accum = useRef(0);
 
   useFrame((_, delta) => {
     if (!isPlaying) return;
-    accum.current += delta;
-    const interval = 0.8 / playbackSpeed;
-    if (accum.current >= interval) { accum.current = 0; advanceFrame(); }
+
+    if (loopAnimation) {
+      // Mode loop: advance frame berdasarkan interval waktu (perilaku semula)
+      accum.current += delta;
+      const interval = 0.8 / playbackSpeed;
+      if (accum.current >= interval) {
+        accum.current = 0;
+        dayPhaseRef.current = 0;
+        advanceFrame();
+      }
+    } else {
+      // Mode sequential: satu hari = animasi 1 siklus penuh
+      // playbackSpeed mengontrol seberapa cepat satu siklus selesai
+      const cycleDuration = 2.0 / playbackSpeed; // detik per hari
+      accum.current += delta / cycleDuration;
+      dayPhaseRef.current = Math.min(accum.current, 1.0);
+
+      if (accum.current >= 1.0) {
+        accum.current = 0;
+        dayPhaseRef.current = 0;
+        advanceFrame();
+      }
+    }
   });
 
   return null;
@@ -571,7 +607,7 @@ function DayClock({ frame, nDays, posX, posZ }: {
 
 // ─── Main Scene ───────────────────────────────────────────────────────────────
 function Scene() {
-  const { data, currentFrame, animationSpeed, showNoJukir } = useSimulationStore();
+  const { data, currentFrame, loopAnimation, showNoJukir } = useSimulationStore();
   if (!data) return null;
 
   // Pilih dataset sesuai mode toggle
@@ -631,7 +667,7 @@ function Scene() {
           choice={agentChoices[i]}
           storeAPos={storeAVec}
           storeBPos={storeBVec}
-          animationSpeed={animationSpeed}
+          loopAnimation={loopAnimation}
         />
       ))}
 

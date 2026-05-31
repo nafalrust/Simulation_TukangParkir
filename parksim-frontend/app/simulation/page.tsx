@@ -1,5 +1,7 @@
 'use client';
 
+'use client';
+
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { ParameterPanel } from '@/components/ParameterPanel';
@@ -46,6 +48,24 @@ function JukirToggle() {
   );
 }
 
+function LoopToggle() {
+  const { loopAnimation, toggleLoopAnimation } = useSimulationStore();
+  return (
+    <button
+      onClick={toggleLoopAnimation}
+      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+        loopAnimation
+          ? 'bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100'
+          : 'bg-gray-50 border-gray-300 text-gray-600 hover:bg-gray-100'
+      }`}
+      title={loopAnimation ? 'Animasi loop — klik untuk mode sequential' : 'Animasi sequential — klik untuk mode loop'}
+    >
+      <span className="text-base leading-none">{loopAnimation ? '🔁' : '1️⃣'}</span>
+      <span className="font-bold">{loopAnimation ? 'Loop' : 'Sekali'}</span>
+    </button>
+  );
+}
+
 export default function SimulationPage() {
   const [activeTab, setActiveTab] = useState<Tab>('3d');
 
@@ -87,6 +107,8 @@ export default function SimulationPage() {
             </button>
           </div>
 
+          {/* Toggle animasi — selalu tampil */}
+          <LoopToggle />
           {/* Toggle jukir — hanya tampil di tab 3D */}
           {activeTab === '3d' && <JukirToggle />}
         </div>

@@ -39,8 +39,10 @@ interface SimulationStore {
   isPlaying: boolean;
   playbackSpeed: number;
   animationSpeed: number;
+  loopAnimation: boolean;     // true = agen terus loop; false = sekali pergi lalu diam
   showNoJukir: boolean;       // true = tampilkan skenario tanpa jukir di 3D
   toggleJukirMode: () => void;
+  toggleLoopAnimation: () => void;
 
   runSimulation: () => Promise<void>;
   setFrame: (frame: number) => void;
@@ -65,8 +67,10 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   isPlaying: false,
   playbackSpeed: 1,
   animationSpeed: 0.3,
+  loopAnimation: false,
   showNoJukir: false,
   toggleJukirMode: () => set((s) => ({ showNoJukir: !s.showNoJukir })),
+  toggleLoopAnimation: () => set((s) => ({ loopAnimation: !s.loopAnimation })),
 
   runSimulation: async () => {
     set({ isLoading: true, error: null, isPlaying: false, currentFrame: 0 });
