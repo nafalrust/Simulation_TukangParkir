@@ -151,12 +151,13 @@ function Decorations({ storeAX, storeBX, storeZ }: { storeAX: number; storeBX: n
 }
 
 // ─── Bangunan Toko ────────────────────────────────────────────────────────────
-function StoreBuilding({ position, label, wallColor, roofColor, revenue }: {
+function StoreBuilding({ position, label, wallColor, roofColor, revenue, visits }: {
   position: [number, number, number];
   label: string;
   wallColor: string;
   roofColor: string;
   revenue: number;
+  visits: number;
 }) {
   const fmt = revenue >= 1_000_000
     ? `Rp ${(revenue / 1_000_000).toFixed(2)}jt`
@@ -198,6 +199,11 @@ function StoreBuilding({ position, label, wallColor, roofColor, revenue }: {
       <Billboard position={[0, 53, 0]}>
         <Text fontSize={6} color="#1e293b" outlineColor="#fff" outlineWidth={0.5}>
           {fmt}
+        </Text>
+      </Billboard>
+      <Billboard position={[0, 63, 0]}>
+        <Text fontSize={5.5} color="#475569" outlineColor="#fff" outlineWidth={0.4}>
+          {`👥 ${visits} pengunjung`}
         </Text>
       </Billboard>
     </group>
@@ -603,14 +609,14 @@ function Scene() {
       <StoreBuilding
         position={[sim_config.store_a_x, 0, storeZ]}
         label="A" wallColor={C.storeAWall} roofColor={C.storeARoof}
-        revenue={dayData.revenue_a}
+        revenue={dayData.revenue_a} visits={dayData.visits_a}
       />
       <JukirFigure storePos={[sim_config.store_a_x, 0, storeZ]} />
 
       <StoreBuilding
         position={[sim_config.store_b_x, 0, sim_config.store_b_y]}
         label="B" wallColor={C.storeBWall} roofColor={C.storeBRoof}
-        revenue={dayData.revenue_b}
+        revenue={dayData.revenue_b} visits={dayData.visits_b}
       />
 
       {agent_snapshots.map((agent, i) => (
