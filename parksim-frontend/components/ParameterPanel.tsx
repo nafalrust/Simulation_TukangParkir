@@ -19,22 +19,22 @@ const SLIDER_SECTIONS: { title: string; sliders: SliderConfig[] }[] = [
     title: 'Populasi & Durasi',
     sliders: [
       {
-        key: 'n_agents', label: 'Jumlah Agen', min: 50, max: 500, step: 10,
+        key: 'n_agents', label: 'Jumlah Agen', min: 50, max: 1000, step: 10,
         hint: 'Jumlah pelanggan dalam simulasi',
         format: (v) => `${v} orang`,
       },
       {
-        key: 'n_days', label: 'Durasi Simulasi', min: 10, max: 180, step: 5,
+        key: 'n_days', label: 'Durasi Simulasi', min: 10, max: 360, step: 5,
         hint: 'Lama simulasi berlangsung',
         format: (v) => `${v} hari`,
       },
       {
-        key: 'market_radius', label: 'Radius Pasar', min: 100, max: 2000, step: 50,
+        key: 'market_radius', label: 'Radius Pasar', min: 100, max: 4000, step: 50,
         hint: 'Radius area tempat tinggal agen tersebar',
         format: (v) => `${v} m`,
       },
       {
-        key: 'distance_to_B', label: 'Jarak A ke B', min: 50, max: 1500, step: 50,
+        key: 'distance_to_B', label: 'Jarak A ke B', min: 50, max: 3000, step: 50,
         hint: 'Jarak antara Toko A dan Toko B',
         format: (v) => `${v} m`,
       },
@@ -44,7 +44,7 @@ const SLIDER_SECTIONS: { title: string; sliders: SliderConfig[] }[] = [
     title: 'Parameter Toko',
     sliders: [
       {
-        key: 'parking_fee', label: 'Biaya Parkir', min: 0, max: 20000, step: 500,
+        key: 'parking_fee', label: 'Biaya Parkir', min: 0, max: 40000, step: 500,
         hint: 'Biaya yang dipungut jukir di Toko A',
         format: (v) => `Rp ${(v / 1000).toFixed(1)}k`,
       },
@@ -59,12 +59,12 @@ const SLIDER_SECTIONS: { title: string; sliders: SliderConfig[] }[] = [
         format: (v) => v.toFixed(2),
       },
       {
-        key: 'min_purchase_amount', label: 'Min. Pembelian', min: 1000, max: 50000, step: 1000,
+        key: 'min_purchase_amount', label: 'Min. Pembelian', min: 1000, max: 100000, step: 1000,
         hint: 'Jumlah pembelian minimum per transaksi',
         format: (v) => `Rp ${(v / 1000).toFixed(0)}k`,
       },
       {
-        key: 'max_purchase_amount', label: 'Maks. Pembelian', min: 50000, max: 1000000, step: 50000,
+        key: 'max_purchase_amount', label: 'Maks. Pembelian', min: 50000, max: 2000000, step: 50000,
         hint: 'Jumlah pembelian maksimum per transaksi',
         format: (v) => `Rp ${(v / 1000).toFixed(0)}k`,
       },
@@ -94,7 +94,7 @@ const SLIDER_SECTIONS: { title: string; sliders: SliderConfig[] }[] = [
     title: 'Memori & Pengalaman',
     sliders: [
       {
-        key: 'memory_decay', label: 'Memory Decay', min: 0, max: 0.1, step: 0.005,
+        key: 'memory_decay', label: 'Memory Decay', min: 0, max: 0.2, step: 0.005,
         hint: 'Laju memudarnya perceived_risk_a per hari (mean reversion)',
         format: (v) => v.toFixed(3),
       },
@@ -119,12 +119,12 @@ const SLIDER_SECTIONS: { title: string; sliders: SliderConfig[] }[] = [
         format: (v) => `${(v * 100).toFixed(0)}%`,
       },
       {
-        key: 'wom_strength', label: 'Kekuatan WOM', min: 0, max: 0.5, step: 0.01,
+        key: 'wom_strength', label: 'Kekuatan WOM', min: 0, max: 1.0, step: 0.01,
         hint: 'Besaran kenaikan aversion/risk pendengar WOM',
         format: (v) => v.toFixed(2),
       },
       {
-        key: 'num_contacts', label: 'Jumlah Kontak', min: 1, max: 10, step: 1,
+        key: 'num_contacts', label: 'Jumlah Kontak', min: 1, max: 20, step: 1,
         hint: 'Berapa agen yang diceritai satu storyteller per hari',
         format: (v) => `${v} orang`,
       },
@@ -134,27 +134,27 @@ const SLIDER_SECTIONS: { title: string; sliders: SliderConfig[] }[] = [
     title: 'Bobot Skor',
     sliders: [
       {
-        key: 'weight_distance', label: 'Jarak', min: -0.02, max: 0, step: 0.001,
+        key: 'weight_distance', label: 'Jarak', min: -0.04, max: 0, step: 0.001,
         hint: 'Pengaruh jarak terhadap skor utilitas (negatif)',
         format: (v) => v.toFixed(3),
       },
       {
-        key: 'weight_parking_aversion', label: 'Aversion', min: -5, max: 0, step: 0.1,
+        key: 'weight_parking_aversion', label: 'Aversion', min: -10, max: 0, step: 0.1,
         hint: 'Pengaruh parking_aversion agen terhadap skor Toko A',
         format: (v) => v.toFixed(1),
       },
       {
-        key: 'weight_parking_fee', label: 'Biaya Parkir', min: -5, max: 0, step: 0.1,
+        key: 'weight_parking_fee', label: 'Biaya Parkir', min: -10, max: 0, step: 0.1,
         hint: 'Pengaruh biaya parkir terhadap skor Toko A',
         format: (v) => v.toFixed(1),
       },
       {
-        key: 'weight_risk', label: 'Risiko', min: -5, max: 0, step: 0.1,
+        key: 'weight_risk', label: 'Risiko', min: -10, max: 0, step: 0.1,
         hint: 'Pengaruh perceived_risk_a terhadap skor Toko A',
         format: (v) => v.toFixed(1),
       },
       {
-        key: 'weight_attractiveness', label: 'Daya Tarik', min: 0, max: 5, step: 0.1,
+        key: 'weight_attractiveness', label: 'Daya Tarik', min: 0, max: 10, step: 0.1,
         hint: 'Pengaruh attractiveness toko terhadap skor (positif)',
         format: (v) => v.toFixed(1),
       },

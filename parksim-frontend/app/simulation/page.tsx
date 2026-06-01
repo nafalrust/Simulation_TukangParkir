@@ -61,7 +61,7 @@ function JukirToggle() {
       <span
         className={`w-1.5 h-1.5 rounded-full ${showNoJukir ? 'bg-emerald-500' : 'bg-red-500'}`}
       />
-      Toko A — {showNoJukir ? 'Tanpa Jukir' : 'Ada Jukir'}
+      Toko A: {showNoJukir ? 'Tanpa Jukir' : 'Ada Jukir'}
     </button>
   );
 }
@@ -99,13 +99,7 @@ export default function SimulationPage() {
           {activeTab === '3d' && <JukirToggle />}
         </div>
 
-        <div className="flex items-center gap-3">
-          {activeTab === '3d' && (
-            <span className="hidden xl:block text-slate-400 text-[10px] font-mono bg-slate-50 border border-slate-200 rounded px-2 py-1">
-              WASD · Q/E naik/turun · scroll zoom · drag orbit
-            </span>
-          )}
-        </div>
+        <div className="flex items-center gap-3" />
       </header>
 
       {/* Body */}
