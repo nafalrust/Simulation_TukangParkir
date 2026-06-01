@@ -14,8 +14,9 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "ParkSim — Simulasi Tukang Parkir Liar",
-  description: "Simulasi ABM+DCM pengaruh tukang parkir liar terhadap revenue minimarket. TPS DTETI UGM 2025.",
+  title: "ParkSim: Simulasi Tukang Parkir Liar",
+  description:
+    "Simulasi ABM+DCM pengaruh tukang parkir liar terhadap revenue minimarket. TPS DTETI UGM 2025.",
 };
 
 export default function RootLayout({
