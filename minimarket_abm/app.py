@@ -14,8 +14,8 @@ import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
 
-import config as cfg
-from main import MiniMarket
+import minimarket_abm.bin.config as cfg
+from minimarket_abm.bin.main import MiniMarket
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Page config
