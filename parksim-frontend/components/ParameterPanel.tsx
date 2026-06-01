@@ -235,6 +235,36 @@ function SectionGroup({ title, sliders }: { title: string; sliders: SliderConfig
   );
 }
 
+function SeedInput() {
+  const { params, setParam } = useSimulationStore();
+
+  return (
+    <div className="border border-slate-200 rounded-md bg-white px-3 py-2.5">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <label className="block text-slate-500 text-[10px] font-semibold uppercase tracking-widest">
+            Seed
+          </label>
+          <p className="text-slate-400 text-[10px] leading-snug mt-0.5">
+            Nilai acak untuk mengulang hasil simulasi yang sama
+          </p>
+        </div>
+        <input
+          type="number"
+          min={0}
+          max={999999}
+          step={1}
+          value={params.seed}
+          onChange={(e) => setParam('seed', Number(e.target.value))}
+          className="w-24 h-8 rounded border border-slate-200 bg-slate-50 px-2 text-right
+                     text-xs font-mono text-slate-800 outline-none focus:border-slate-500
+                     focus:bg-white transition-colors"
+        />
+      </div>
+    </div>
+  );
+}
+
 function PlaybackControls() {
   const {
     currentFrame, isPlaying, playbackSpeed,
@@ -347,6 +377,7 @@ export function ParameterPanel() {
         {SLIDER_SECTIONS.map((section) => (
           <SectionGroup key={section.title} title={section.title} sliders={section.sliders} />
         ))}
+        <SeedInput />
       </div>
 
       {/* Run button */}
