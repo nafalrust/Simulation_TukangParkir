@@ -731,7 +731,7 @@ function AgentScatterChart() {
 
   return (
     <ChartCard
-      title="Distribusi Agen — Hari Terakhir"
+      title="Distribusi Agen: Hari Terakhir"
       subtitle="Parking Aversion vs Perceived Risk A per agen. Agen dengan aversion tinggi cenderung memilih Toko B."
     >
       {/* Legend custom di luar chart agar tidak tumpang tindih */}
@@ -867,11 +867,11 @@ function SummaryCards({ visibleData }: { visibleData: DayData[] }) {
       />
       <StatCard
         label="Perceived Risk A (terakhir)"
-        value={last?.avg_risk_a.toFixed(4) ?? "—"}
+        value={last?.avg_risk_a.toFixed(4) ?? "N/A"}
       />
       <StatCard
         label="Avg Parking Aversion (terakhir)"
-        value={last?.avg_parking_aversion.toFixed(4) ?? "—"}
+        value={last?.avg_parking_aversion.toFixed(4) ?? "N/A"}
       />
     </div>
   );
@@ -952,7 +952,7 @@ function ModelParamsSection() {
     { label: "Memory Decay", value: mp.memory_decay.toFixed(3) },
     {
       label: "Direct Exp",
-      value: mp.direct_experience_impact?.toFixed(2) ?? "—",
+      value: mp.direct_experience_impact?.toFixed(2) ?? "N/A",
     },
     {
       label: "Bad Exp Prob",
@@ -1070,7 +1070,7 @@ function ComparisonRevenueChart({ frame }: { frame: number }) {
       ? (((last.cum_tanpa - last.cum_dengan) / last.cum_dengan) * 100).toFixed(
           1,
         )
-      : "—";
+      : "N/A";
 
   return (
     <ChartCard
@@ -1181,7 +1181,7 @@ function ComparisonRevenueChart({ frame }: { frame: number }) {
           />
           <StatCard
             label="Estimasi revenue hilang"
-            value={lostRev > 0 ? `Rp ${fmtRp(lostRev)}` : "—"}
+            value={lostRev > 0 ? `Rp ${fmtRp(lostRev)}` : "N/A"}
           />
         </div>
       )}
@@ -1285,7 +1285,7 @@ function ComparisonWOMChart({ frame }: { frame: number }) {
 
   return (
     <ChartCard
-      title="WOM & Bad Experience — Ada Jukir vs Tanpa Jukir"
+      title="WOM & Bad Experience: Ada Jukir vs Tanpa Jukir"
       subtitle="Dampak sosial yang hilang jika jukir dihapus: penyebaran cerita negatif dan pengalaman buruk"
     >
       <p className="text-slate-400 text-[10px] font-medium mb-2">
@@ -1310,7 +1310,7 @@ function ComparisonWOMChart({ frame }: { frame: number }) {
           <Legend wrapperStyle={{ fontSize: 11 }} />
           <Line
             dataKey="wom_dengan"
-            name="WOM — Ada Jukir"
+            name="WOM: Ada Jukir"
             stroke={COL.wom}
             dot={false}
             strokeWidth={1.5}
@@ -1318,7 +1318,7 @@ function ComparisonWOMChart({ frame }: { frame: number }) {
           />
           <Line
             dataKey="wom_tanpa"
-            name="WOM — Tanpa Jukir"
+            name="WOM: Tanpa Jukir"
             stroke={COL.noJukir}
             dot={false}
             strokeWidth={1.5}
@@ -1343,7 +1343,7 @@ function ComparisonWOMChart({ frame }: { frame: number }) {
           <Legend wrapperStyle={{ fontSize: 11 }} />
           <Line
             dataKey="bad_dengan"
-            name="Bad Exp — Ada Jukir"
+            name="Bad Exp: Ada Jukir"
             stroke={COL.bad}
             dot={false}
             strokeWidth={1.5}
@@ -1351,7 +1351,7 @@ function ComparisonWOMChart({ frame }: { frame: number }) {
           />
           <Line
             dataKey="bad_tanpa"
-            name="Bad Exp — Tanpa Jukir"
+            name="Bad Exp: Tanpa Jukir"
             stroke={COL.noJukir}
             dot={false}
             strokeWidth={1.5}
@@ -1403,7 +1403,7 @@ function ComparisonRiskChart({ frame }: { frame: number }) {
 
   return (
     <ChartCard
-      title="Perceived Risk & Parking Aversion — Ada Jukir vs Tanpa Jukir"
+      title="Perceived Risk & Parking Aversion: Ada Jukir vs Tanpa Jukir"
       subtitle="Tanpa jukir, persepsi risiko dan aversion seharusnya mendekati nilai awal dan tidak bertumbuh"
     >
       <p className="text-slate-400 text-[10px] font-medium mb-2">
@@ -1444,7 +1444,7 @@ function ComparisonRiskChart({ frame }: { frame: number }) {
           </ReferenceLine>
           <Area
             dataKey="risk_dengan"
-            name="Risk — Ada Jukir"
+            name="Risk: Ada Jukir"
             stroke={COL.risk}
             fill={COL.risk}
             fillOpacity={0.08}
@@ -1453,7 +1453,7 @@ function ComparisonRiskChart({ frame }: { frame: number }) {
           />
           <Area
             dataKey="risk_tanpa"
-            name="Risk — Tanpa Jukir"
+            name="Risk: Tanpa Jukir"
             stroke={COL.noJukir}
             fill={COL.noJukir}
             fillOpacity={0.08}
@@ -1488,7 +1488,7 @@ function ComparisonRiskChart({ frame }: { frame: number }) {
           <Legend wrapperStyle={{ fontSize: 11 }} />
           <Area
             dataKey="avers_dengan"
-            name="Aversion — Ada Jukir"
+            name="Aversion: Ada Jukir"
             stroke={COL.aversion}
             fill={COL.aversion}
             fillOpacity={0.08}
@@ -1497,7 +1497,7 @@ function ComparisonRiskChart({ frame }: { frame: number }) {
           />
           <Area
             dataKey="avers_tanpa"
-            name="Aversion — Tanpa Jukir"
+            name="Aversion: Tanpa Jukir"
             stroke={COL.noJukir}
             fill={COL.noJukir}
             fillOpacity={0.08}
@@ -1629,11 +1629,11 @@ function ComparisonMarketShareChart({ frame }: { frame: number }) {
       <div className="grid grid-cols-4 gap-3 mt-4">
         <StatCard
           label="Share A akhir (ada jukir)"
-          value={`${last?.share_a_dengan ?? "—"}%`}
+          value={`${last?.share_a_dengan ?? "N/A"}%`}
         />
         <StatCard
           label="Share A akhir (tanpa jukir)"
-          value={`${last?.share_a_tanpa ?? "—"}%`}
+          value={`${last?.share_a_tanpa ?? "N/A"}%`}
         />
         <StatCard label="Rata-rata share (ada jukir)" value={`${avgDengan}%`} />
         <StatCard
@@ -1698,14 +1698,14 @@ export function ChartsPanel() {
       {/* Ringkasan */}
       <div>
         <SectionLabel>
-          Ringkasan — Skenario Ada Jukir s.d. Hari {frame + 1}
+          Ringkasan Skenario Ada Jukir s.d. Hari {frame + 1}
         </SectionLabel>
         <SummaryCards visibleData={visibleData} />
       </div>
 
       {/* Detail charts */}
       <div>
-        <SectionLabel>Detail Dinamika — Skenario Ada Jukir</SectionLabel>
+        <SectionLabel>Detail Dinamika: Skenario Ada Jukir</SectionLabel>
         <div className="grid grid-cols-2 gap-4">
           <VisitChart {...chartProps} />
           <MarketShareChart {...chartProps} />
