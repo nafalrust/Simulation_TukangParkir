@@ -727,11 +727,30 @@ function AgentScatterChart() {
       .map((a) => ({ x: a.parking_aversion, y: a.perceived_risk_a, z: 4 })),
   };
 
+  const legendItems = [
+    { label: "Pilih A", color: COL.storeA },
+    { label: "Pilih B", color: COL.storeB },
+    { label: "Tidak beli", color: COL.neutral },
+  ];
+
   return (
     <ChartCard
       title="Distribusi Agen — Hari Terakhir"
       subtitle="Parking Aversion vs Perceived Risk A per agen. Agen dengan aversion tinggi cenderung memilih Toko B."
     >
+      {/* Legend custom di luar chart agar tidak tumpang tindih */}
+      <div className="flex items-center gap-4 mb-3">
+        {legendItems.map((item) => (
+          <div key={item.label} className="flex items-center gap-1.5">
+            <span
+              className="inline-block w-2.5 h-2.5 rounded-full flex-none"
+              style={{ backgroundColor: item.color }}
+            />
+            <span className="text-slate-500 text-[11px]">{item.label}</span>
+          </div>
+        ))}
+      </div>
+
       <ResponsiveContainer width="100%" height={260}>
         <ScatterChart margin={{ top: 10, right: 20, bottom: 24, left: 10 }}>
           <CartesianGrid stroke={GRID} />
@@ -789,7 +808,6 @@ function AgentScatterChart() {
               );
             }}
           />
-          <Legend wrapperStyle={{ fontSize: 11 }} />
           <Scatter
             name="Pilih A"
             data={byChoice.A}
