@@ -74,12 +74,13 @@ class SimulateRequest(BaseModel):
     wom_strength: float = Field(default=0.05, ge=0.0, le=0.5)
     num_contacts: int = Field(default=3, ge=1, le=10)
 
-    # Bobot skor
-    weight_distance: float = Field(default=-0.002, ge=-0.02, le=0.0)
-    weight_parking_aversion: float = Field(default=-1.2, ge=-5.0, le=0.0)
-    weight_parking_fee: float = Field(default=-2.0, ge=-5.0, le=0.0)
-    weight_risk: float = Field(default=-1.0, ge=-5.0, le=0.0)
-    weight_attractiveness: float = Field(default=1.0, ge=0.0, le=5.0)
+    # Bobot skor. Pada agent.py terbaru, bobot penalty bernilai positif
+    # lalu dikurangkan dari skor utilitas.
+    weight_distance: float = Field(default=1.0, ge=0.0, le=10.0)
+    weight_parking_aversion: float = Field(default=1.2, ge=0.0, le=10.0)
+    weight_parking_fee: float = Field(default=2.0, ge=0.0, le=10.0)
+    weight_risk: float = Field(default=1.0, ge=0.0, le=10.0)
+    weight_attractiveness: float = Field(default=2.0, ge=0.0, le=10.0)
 
     seed: int = Field(default=42)
 

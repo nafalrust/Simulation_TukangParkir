@@ -369,8 +369,6 @@ function WOMSystem({ womCount, agentPositions }: {
       active: false, fromX: 0, fromZ: 0, toX: 0, toZ: 0, life: 0,
     })),
   );
-  const prevWom = useRef(0);
-
   // Three.js objects created once
   const particleMeshes = useRef<THREE.Mesh[]>([]);
   const lineMeshes     = useRef<THREE.Line[]>([]);
@@ -591,27 +589,15 @@ function Scene() {
   const frame   = Math.min(currentFrame, nDays - 1);
   const dayData = activeDaily[frame];
 
-  const storeAVec = useMemo(
-    () => new THREE.Vector3(sim_config.store_a_x, 0, sim_config.store_a_y),
-    [sim_config.store_a_x, sim_config.store_a_y],
-  );
-  const storeBVec = useMemo(
-    () => new THREE.Vector3(sim_config.store_b_x, 0, sim_config.store_b_y),
-    [sim_config.store_b_x, sim_config.store_b_y],
-  );
+  const storeAVec = new THREE.Vector3(sim_config.store_a_x, 0, sim_config.store_a_y);
+  const storeBVec = new THREE.Vector3(sim_config.store_b_x, 0, sim_config.store_b_y);
 
   // Lookup langsung dari data simulasi Python — 100% akurat, tanpa pseudo-random
-  const agentChoices = useMemo<AgentChoice[]>(
-    () => activeSnapshots.map((a) =>
-      resolveChoiceFromData(a.id, activeChoicesPerDay, frame)
-    ),
-    [activeSnapshots, activeChoicesPerDay, frame],
+  const agentChoices: AgentChoice[] = activeSnapshots.map((a) =>
+    resolveChoiceFromData(a.id, activeChoicesPerDay, frame)
   );
 
-  const agentVecs = useMemo<THREE.Vector3[]>(
-    () => activeSnapshots.map((a) => new THREE.Vector3(a.x, 0, a.y)),
-    [activeSnapshots],
-  );
+  const agentVecs: THREE.Vector3[] = activeSnapshots.map((a) => new THREE.Vector3(a.x, 0, a.y));
 
   const storeZ = sim_config.store_a_y;
 

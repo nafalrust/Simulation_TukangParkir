@@ -20,11 +20,11 @@ const DEFAULT_PARAMS: SimulateRequest = {
   wom_probability: 0.3,
   wom_strength: 0.05,
   num_contacts: 3,
-  weight_distance: -0.002,
-  weight_parking_aversion: -1.2,
-  weight_parking_fee: -2.0,
-  weight_risk: -1.0,
-  weight_attractiveness: 1.0,
+  weight_distance: 1.0,
+  weight_parking_aversion: 1.2,
+  weight_parking_fee: 2.0,
+  weight_risk: 1.0,
+  weight_attractiveness: 2.0,
   seed: 42,
 };
 

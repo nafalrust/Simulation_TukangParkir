@@ -48,11 +48,11 @@ class MiniMarket(mesa.Model):
         num_contacts: int = 3,
 
         # Score weights
-        weight_distance: float = -0.002,
-        weight_parking_aversion: float = -1.2,
-        weight_parking_fee: float = -2.0,
-        weight_risk: float = -1.0,
-        weight_attractiveness: float = 1.0,
+        weight_distance: float = 1.0,
+        weight_parking_aversion: float = 1.2,
+        weight_parking_fee: float = 2.0,
+        weight_risk: float = 1.0,
+        weight_attractiveness: float = 2.0,
 
         seed: int = 42,
     ) -> None:

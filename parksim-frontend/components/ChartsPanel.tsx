@@ -273,8 +273,6 @@ function ChartPlaybackBar({ frame, nDays }: { frame: number; nDays: number }) {
 function VisitChart({
   visibleData,
   allData,
-  frame,
-  nDays,
   criticalDay,
 }: ChartProps) {
   const today = visibleData[visibleData.length - 1];
@@ -365,8 +363,6 @@ function VisitChart({
 function CumulativeRevenueChart({
   visibleData,
   allData,
-  frame,
-  nDays,
   criticalDay,
 }: ChartProps) {
   let cumA = 0,
@@ -452,7 +448,7 @@ function CumulativeRevenueChart({
 }
 
 // ─── Chart 3: Revenue Harian ──────────────────────────────────────────────────
-function DailyRevenueChart({ visibleData, allData, criticalDay }: ChartProps) {
+function DailyRevenueChart({ visibleData, criticalDay }: ChartProps) {
   const today = visibleData[visibleData.length - 1];
   const delta = today ? today.revenue_b - today.revenue_a : 0;
 
@@ -633,7 +629,7 @@ function RiskAversionChart({ visibleData }: ChartProps) {
 }
 
 // ─── Chart 6: Market Share ────────────────────────────────────────────────────
-function MarketShareChart({ visibleData, allData, criticalDay }: ChartProps) {
+function MarketShareChart({ visibleData, criticalDay }: ChartProps) {
   const chartData = visibleData.map((d) => {
     const total = d.visits_a + d.visits_b || 1;
     return {
@@ -891,19 +887,25 @@ function ModelParamsSection() {
   const lastDay = data.abm_daily[data.abm_daily.length - 1];
   const avgAvers = lastDay.avg_parking_aversion;
   const avgRisk = lastDay.avg_risk_a;
-  const parkingFeeScore = mp.parking_fee / 200_000;
-  const distA = cfg.store_a_x;
+  const representativePurchase =
+    ((mp.min_purchase_amount ?? 1_000) + (mp.max_purchase_amount ?? 500_000)) / 2;
+  const parkingFeeScore = Math.min(1, mp.parking_fee / Math.max(1, representativePurchase));
+  const maxDistance = Math.hypot(mp.distance_to_B + mp.market_radius, mp.market_radius);
+  const distA = cfg.store_b_x / 2;
   const distB = cfg.store_b_x / 2;
+  const distanceScoreA = Math.min(1, distA / Math.max(1, maxDistance));
+  const distanceScoreB = Math.min(1, distB / Math.max(1, maxDistance));
 
   const scoreA =
-    mp.weight_distance * distA +
-    mp.weight_parking_aversion * avgAvers +
-    mp.weight_parking_fee * parkingFeeScore +
-    mp.weight_risk * avgRisk +
-    mp.weight_attractiveness * mp.attractiveness_A;
+    mp.weight_attractiveness * mp.attractiveness_A -
+    mp.weight_distance * distanceScoreA -
+    mp.weight_parking_aversion * avgAvers -
+    mp.weight_parking_fee * parkingFeeScore -
+    mp.weight_risk * avgRisk;
 
   const scoreB =
-    mp.weight_distance * distB + mp.weight_attractiveness * mp.attractiveness_B;
+    mp.weight_attractiveness * mp.attractiveness_B -
+    mp.weight_distance * distanceScoreB;
 
   const maxScore = Math.max(scoreA, scoreB);
   const expA = Math.exp(scoreA - maxScore);
@@ -913,8 +915,8 @@ function ModelParamsSection() {
   const weights = [
     {
       label: "w_distance",
-      value: mp.weight_distance.toFixed(3),
-      note: "per meter",
+      value: mp.weight_distance.toFixed(1),
+      note: "penalty jarak",
     },
     {
       label: "w_aversion",
@@ -924,7 +926,7 @@ function ModelParamsSection() {
     {
       label: "w_fee",
       value: mp.weight_parking_fee.toFixed(1),
-      note: "fee / 200k",
+      note: "fee / belanja",
     },
     {
       label: "w_risk",
@@ -992,16 +994,17 @@ function ModelParamsSection() {
           Contoh skor (agen rata-rata, hari terakhir)
         </p>
         <p className="text-slate-600 text-[10px] font-mono leading-relaxed">
-          score_A = {mp.weight_distance}×dist_A + {mp.weight_parking_aversion}×
-          {avgAvers.toFixed(3)} + {mp.weight_parking_fee}×
-          {parkingFeeScore.toFixed(4)} + {mp.weight_risk}×{avgRisk.toFixed(3)} +{" "}
-          {mp.weight_attractiveness}×{mp.attractiveness_A}
+          score_A = {mp.weight_attractiveness}×{mp.attractiveness_A} -{" "}
+          {mp.weight_distance}×{distanceScoreA.toFixed(3)} -{" "}
+          {mp.weight_parking_aversion}×{avgAvers.toFixed(3)} -{" "}
+          {mp.weight_parking_fee}×{parkingFeeScore.toFixed(4)} - {mp.weight_risk}×
+          {avgRisk.toFixed(3)}
           {" = "}
           <span className="font-bold text-slate-800">{scoreA.toFixed(3)}</span>
         </p>
         <p className="text-slate-600 text-[10px] font-mono leading-relaxed">
-          score_B = {mp.weight_distance}×dist_B + {mp.weight_attractiveness}×
-          {mp.attractiveness_B}
+          score_B = {mp.weight_attractiveness}×{mp.attractiveness_B} -{" "}
+          {mp.weight_distance}×{distanceScoreB.toFixed(3)}
           {" = "}
           <span className="font-bold text-slate-800">{scoreB.toFixed(3)}</span>
         </p>

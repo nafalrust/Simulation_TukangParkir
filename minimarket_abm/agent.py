@@ -106,24 +106,27 @@ class CustomerAgent(mesa.Agent):
         perceived_risk: float = 0.0,
     ) -> float:
         parking_flag = int(has_illegal_parking)
+        max_distance = math.hypot(
+            self.model.distance_to_B + self.model.market_radius,
+            self.model.market_radius,
+        )
 
-        parking_fee_score = (
-            self.model.parking_fee / self.model.max_purchase_amount
+        distance_score = min(
+            1.0,
+            distance / max(1.0, max_distance),
+        )
+
+        parking_fee_score = min(
+            1.0,
+            self.model.parking_fee / max(1, self.purchase_amount),
         )
 
         score = (
-            self.model.weight_distance * distance
-            
-            + self.model.weight_parking_aversion
-            * self.parking_aversion
-            * parking_flag
-
-            + self.model.weight_parking_fee
-            * parking_fee_score * parking_flag
-            + self.model.weight_risk * perceived_risk * parking_flag
-            
-            + self.model.weight_attractiveness
-            * attractiveness
+            self.model.weight_attractiveness * attractiveness
+            - self.model.weight_distance * distance_score
+            - self.model.weight_parking_aversion * self.parking_aversion * parking_flag
+            - self.model.weight_parking_fee * parking_fee_score * parking_flag
+            - self.model.weight_risk * perceived_risk * parking_flag
         )
 
         return score

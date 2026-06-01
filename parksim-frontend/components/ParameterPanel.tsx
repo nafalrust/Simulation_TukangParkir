@@ -134,23 +134,23 @@ const SLIDER_SECTIONS: { title: string; sliders: SliderConfig[] }[] = [
     title: 'Bobot Skor',
     sliders: [
       {
-        key: 'weight_distance', label: 'Jarak', min: -0.04, max: 0, step: 0.001,
-        hint: 'Pengaruh jarak terhadap skor utilitas (negatif)',
-        format: (v) => v.toFixed(3),
-      },
-      {
-        key: 'weight_parking_aversion', label: 'Aversion', min: -10, max: 0, step: 0.1,
-        hint: 'Pengaruh parking_aversion agen terhadap skor Toko A',
+        key: 'weight_distance', label: 'Jarak', min: 0, max: 10, step: 0.1,
+        hint: 'Penalty jarak ternormalisasi; makin besar, toko yang jauh makin tidak menarik',
         format: (v) => v.toFixed(1),
       },
       {
-        key: 'weight_parking_fee', label: 'Biaya Parkir', min: -10, max: 0, step: 0.1,
-        hint: 'Pengaruh biaya parkir terhadap skor Toko A',
+        key: 'weight_parking_aversion', label: 'Aversion', min: 0, max: 10, step: 0.1,
+        hint: 'Penalty parking_aversion terhadap Toko A saat ada jukir',
         format: (v) => v.toFixed(1),
       },
       {
-        key: 'weight_risk', label: 'Risiko', min: -10, max: 0, step: 0.1,
-        hint: 'Pengaruh perceived_risk_a terhadap skor Toko A',
+        key: 'weight_parking_fee', label: 'Biaya Parkir', min: 0, max: 10, step: 0.1,
+        hint: 'Penalty biaya parkir relatif terhadap nominal belanja agen',
+        format: (v) => v.toFixed(1),
+      },
+      {
+        key: 'weight_risk', label: 'Risiko', min: 0, max: 10, step: 0.1,
+        hint: 'Penalty perceived_risk_a terhadap Toko A saat ada jukir',
         format: (v) => v.toFixed(1),
       },
       {

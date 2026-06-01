@@ -66,6 +66,8 @@ export interface AgentSnapshot {
 }
 
 export interface ModelParams {
+  market_radius: number;
+  distance_to_B: number;
   weight_distance: number;
   weight_parking_aversion: number;
   weight_parking_fee: number;
@@ -74,6 +76,8 @@ export interface ModelParams {
   parking_fee: number;
   attractiveness_A: number;
   attractiveness_B: number;
+  min_purchase_amount: number;
+  max_purchase_amount: number;
   wom_probability: number;
   wom_strength: number;
   memory_decay: number;
