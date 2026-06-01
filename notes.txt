@@ -1,0 +1,15 @@
+parking_aversion -> set, tiap agent bisa dibuat beda, ini tidak akan diupdate gampanganya
+ini pandangan user umumnya kalau liat kang parkir
+
+preceived_risk_a -> set, tiap agent bisa dibuat beda, ini yang ngasih tau user pernah ada
+pengalaman buruk apa engga di toko tersebut mungkin berkaitan sama tukang parkir atau engga. semen
+tara ga dibuat ada hubunganya sama parking_aversion jadi kayak fifty=fifty.
+
+memory_decay -> set | seberapa besar dia bakal turun, tiap agent bisa dibuat beda
+shopping_proba -> set | bisa di set sama aja
+bad_experience_proba -> set | di set sendiri
+
+
+function#
+samp_purchasse_amount
+handle_bad_experience -> dibuat fixed dulu dan tidak huristic

@@ -58,7 +58,6 @@ class CustomerAgent(mesa.Agent):
         self.had_bad_experience = False
         self.purchase_amount = 0
 
-        # Persepsi risiko meluruh tiap hari
         self.perceived_risk_a *= 1.0 - self.model.memory_decay
         self.perceived_risk_a = max(0.0, self.perceived_risk_a)
 
