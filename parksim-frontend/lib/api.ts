@@ -12,15 +12,19 @@ export interface SimulateRequest {
   attractiveness_A: number;
   attractiveness_B: number;
 
+  // Pembelian
+  min_purchase_amount: number;
+  max_purchase_amount: number;
+
   // Agen
   parking_aversion: number;
   initial_risk_a: number;
-  shopping_prob: number;
+  shopping_proba: number;
 
-  // Memori
-  memory_strength: number;
+  // Memori & pengalaman
   memory_decay: number;
   direct_experience_impact: number;
+  bad_experience_probability: number;
 
   // Sosial (WOM)
   wom_probability: number;
@@ -44,8 +48,8 @@ export interface DayData {
   no_buy: number;
   bad_experiences: number;
   wom_messages: number;
-  avg_risk_a: number;           // rata-rata perceived_risk_a semua agen (0–1)
-  avg_parking_aversion: number; // rata-rata parking_aversion semua agen (0–1)
+  avg_risk_a: number;
+  avg_parking_aversion: number;
   revenue_a: number;
   revenue_b: number;
 }
@@ -56,7 +60,7 @@ export interface AgentSnapshot {
   y: number;
   choice: 'A' | 'B' | 'none';
   parking_aversion: number;
-  perceived_risk_a: number;    // ganti dari memory_a; nama field sesuai model Python
+  perceived_risk_a: number;
   had_bad_experience: boolean;
   no_buy_reason: 'no_need' | null;
 }
@@ -72,8 +76,10 @@ export interface ModelParams {
   attractiveness_B: number;
   wom_probability: number;
   wom_strength: number;
-  memory_strength: number;
   memory_decay: number;
+  direct_experience_impact: number;
+  bad_experience_probability: number;
+  shopping_proba: number;
 }
 
 export interface SimConfig {
@@ -86,15 +92,52 @@ export interface SimConfig {
   store_b_y: number;
 }
 
+// Format internal: array sepanjang n_days, tiap elemen adalah
+// Record<customer_id_string, "A"|"B">. Agent tidak belanja = tidak muncul (= "stay").
+export type AgentChoicesPerDay = Record<string, 'A' | 'B'>[];
+
+// Format mentah dari backend teman: flat list per record keputusan
+interface ChoiceRecord {
+  day: number;
+  customer_id: number;
+  choice: string;
+}
+
+// Raw response dari backend (sebelum diproses)
+interface RawSimulateResponse {
+  abm_daily: DayData[];
+  agent_snapshots: AgentSnapshot[];
+  choice_records: ChoiceRecord[];
+  abm_daily_no_jukir: DayData[];
+  agent_snapshots_no_jukir: AgentSnapshot[];
+  choice_records_no_jukir: ChoiceRecord[];
+  model_params: ModelParams;
+  sim_config: SimConfig;
+}
+
 export interface SimulateResponse {
   // Skenario ADA jukir
   abm_daily: DayData[];
   agent_snapshots: AgentSnapshot[];
+  agent_choices_per_day: AgentChoicesPerDay;
   // Skenario TANPA jukir (perbandingan)
   abm_daily_no_jukir: DayData[];
   agent_snapshots_no_jukir: AgentSnapshot[];
+  agent_choices_per_day_no_jukir: AgentChoicesPerDay;
   model_params: ModelParams;
   sim_config: SimConfig;
+}
+
+// Transformasi flat choice_records → AgentChoicesPerDay (format yang dipakai SimulationCanvas)
+function buildChoicesPerDay(records: ChoiceRecord[], nDays: number): AgentChoicesPerDay {
+  const result: AgentChoicesPerDay = Array.from({ length: nDays }, () => ({}));
+  for (const r of records) {
+    const idx = r.day - 1; // day adalah 1-indexed
+    if (idx >= 0 && idx < nDays && (r.choice === 'A' || r.choice === 'B')) {
+      result[idx][String(r.customer_id)] = r.choice as 'A' | 'B';
+    }
+  }
+  return result;
 }
 
 export async function runSimulation(params: SimulateRequest): Promise<SimulateResponse> {
@@ -107,5 +150,17 @@ export async function runSimulation(params: SimulateRequest): Promise<SimulateRe
     const err = await res.text();
     throw new Error(`Simulation failed (${res.status}): ${err}`);
   }
-  return res.json();
+  const raw: RawSimulateResponse = await res.json();
+  const nDays = raw.abm_daily.length;
+
+  return {
+    abm_daily: raw.abm_daily,
+    agent_snapshots: raw.agent_snapshots,
+    agent_choices_per_day: buildChoicesPerDay(raw.choice_records, nDays),
+    abm_daily_no_jukir: raw.abm_daily_no_jukir,
+    agent_snapshots_no_jukir: raw.agent_snapshots_no_jukir,
+    agent_choices_per_day_no_jukir: buildChoicesPerDay(raw.choice_records_no_jukir, nDays),
+    model_params: raw.model_params,
+    sim_config: raw.sim_config,
+  };
 }
