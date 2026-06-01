@@ -33,3 +33,15 @@ Thumbs.db
 node_modules/
 .next/
 out/
+
+browse.vc.db
+browse.vc.db-shm
+browse.vc.db-wal
+
+.vscode/
+Env/
+env/
+venv/
+.venv/
+__pycache__/
+*.pyc
