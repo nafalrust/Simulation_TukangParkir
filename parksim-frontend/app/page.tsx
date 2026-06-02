@@ -69,15 +69,15 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#0f1117] text-white selection:bg-white/20">
       {/* Nav */}
-      <nav className="sticky top-0 z-50 border-b border-white/[0.06] bg-[#0f1117]/90 backdrop-blur-md">
+      <nav className="sticky top-0 z-50 border-b border-white/15 bg-[#0f1117]/90 backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-8 h-14 flex items-center justify-between">
           <span className="font-semibold text-sm tracking-wide text-white">
             ParkSim
           </span>
           <Link
             href="/simulation"
-            className="text-xs font-medium px-4 py-2 rounded-md border border-white/10 text-slate-400
-                       hover:text-white hover:border-white/25 transition-all duration-200"
+            className="text-xs font-medium px-4 py-2 rounded-md border border-white/25 text-slate-300
+                       hover:text-white hover:border-white/50 transition-all duration-200"
           >
             Buka Simulator
           </Link>
@@ -99,11 +99,15 @@ export default function Home() {
             </span>
           </h1>
 
-          <p className="text-slate-400 text-base leading-relaxed max-w-2xl mb-10">
+          <p className="text-slate-400 text-base leading-relaxed max-w-2xl mb-3">
             ParkSim memodelkan bagaimana keberadaan juru parkir liar di depan
             sebuah minimarket perlahan menggeser pelanggan ke kompetitor
-            terdekat — satu keputusan kecil yang, bila diulang ratusan kali
+            terdekat. Satu keputusan kecil yang, bila diulang ratusan kali
             setiap hari, berdampak besar pada revenue.
+          </p>
+
+          <p className="text-slate-600 text-sm mb-10">
+            Sesuaikan parameter, lihat hasilnya secara langsung.
           </p>
 
           <div className="flex items-center gap-4 flex-wrap">
@@ -114,15 +118,12 @@ export default function Home() {
             >
               Jalankan Simulasi
             </Link>
-            <span className="text-slate-600 text-sm">
-              Sesuaikan parameter, lihat hasilnya secara langsung
-            </span>
           </div>
         </div>
       </section>
 
       {/* Stats bar */}
-      <div className="border-y border-white/[0.06]">
+      <div className="border-y border-white/15">
         <div className="max-w-6xl mx-auto px-8 py-10 grid grid-cols-2 md:grid-cols-4 gap-8">
           {STATS.map((s) => (
             <div key={s.label} className="space-y-1">
@@ -156,7 +157,7 @@ export default function Home() {
             <p className="text-slate-400 text-sm leading-relaxed">
               Juru parkir liar bukan sekadar gangguan di trotoar. Bagi pemilik
               minimarket, mereka adalah variabel tersembunyi yang mempengaruhi
-              persepsi kenyamanan pelanggan — dan akhirnya, pilihan ke mana
+              persepsi kenyamanan pelanggan; ujungnya, pelanggan memilih ke mana
               mereka akan belanja hari ini dan esok.
             </p>
           </div>
@@ -179,7 +180,7 @@ export default function Home() {
       </section>
 
       {/* How it works */}
-      <div className="border-t border-white/[0.06]">
+      <div className="border-t border-white/15">
         <section className="max-w-6xl mx-auto px-8 py-20">
           <p className="text-xs font-mono text-slate-500 tracking-widest uppercase mb-14">
             Alur Simulasi
@@ -188,8 +189,8 @@ export default function Home() {
             {STEPS.map((item, i) => (
               <div
                 key={item.num}
-                className={`relative p-6 border-l border-white/[0.06] cursor-default transition-all duration-300
-                  ${hoveredStep === item.num ? "bg-white/[0.03]" : ""}`}
+                className={`relative p-6 border-l border-white/20 cursor-default transition-all duration-300
+                  ${hoveredStep === item.num ? "bg-white/[0.04] border-white/40" : ""}`}
                 onMouseEnter={() => setHoveredStep(item.num)}
                 onMouseLeave={() => setHoveredStep(null)}
               >
@@ -215,7 +216,7 @@ export default function Home() {
       </div>
 
       {/* Mekanisme */}
-      <div className="border-t border-white/[0.06]">
+      <div className="border-t border-white/15">
         <section className="max-w-6xl mx-auto px-8 py-20">
           <p className="text-xs font-mono text-slate-500 tracking-widest uppercase mb-14">
             Mekanisme Model
@@ -225,23 +226,23 @@ export default function Home() {
               {
                 label: "ABM",
                 title: "Agent-Based Modeling",
-                desc: "Dibangun dengan Mesa. Setiap agen menyimpan state sendiri: seberapa takut kena palak, seberapa buruk pengalaman terakhir, dan siapa yang mereka percaya ceritanya.",
+                desc: "Dibangun dengan Mesa. Setiap agen menyimpan state sendiri, mulai dari seberapa takut kena palak, seberapa buruk pengalaman terakhir, hingga siapa yang mereka percaya ceritanya.",
               },
               {
                 label: "Tallying",
                 title: "Weighted Scoring",
-                desc: "Pilihan toko dihitung dari bobot jarak, daya tarik, aversi parkir, dan risiko yang dipersepsikan. Tidak ada formula ajaib — hanya penjumlahan yang jujur.",
+                desc: "Pilihan toko dihitung dari bobot jarak, daya tarik, aversi parkir, dan risiko yang dipersepsikan. Tidak ada formula ajaib, hanya penjumlahan yang jujur.",
               },
               {
                 label: "WOM",
                 title: "Word of Mouth",
-                desc: "Pengalaman buruk menyebar. Setiap hari, agen berbagi cerita dengan tetangga terdekat mereka — menggeser persepsi orang lain tanpa perlu iklan.",
+                desc: "Pengalaman buruk menyebar. Setiap hari, agen berbagi cerita dengan tetangga terdekat mereka dan secara perlahan menggeser persepsi orang lain tanpa perlu iklan.",
               },
             ].map((m) => (
               <div
                 key={m.label}
-                className="p-6 rounded-lg border border-white/[0.06] hover:border-white/[0.12]
-                           hover:bg-white/[0.02] transition-all duration-300 group"
+                className="p-6 rounded-lg border border-white/20 hover:border-white/40
+                           hover:bg-white/[0.03] transition-all duration-300 group"
               >
                 <div className="text-[9px] font-semibold tracking-widest text-slate-600 uppercase mb-3">
                   {m.label}
@@ -259,14 +260,14 @@ export default function Home() {
       </div>
 
       {/* CTA */}
-      <div className="border-t border-white/[0.06]">
+      <div className="border-t border-white/15">
         <section className="max-w-6xl mx-auto px-8 py-24 text-center">
           <h2 className="text-3xl font-bold text-white mb-4">
             Coba sendiri, atur parameternya
           </h2>
           <p className="text-slate-500 text-sm mb-10 max-w-md mx-auto">
             Ganti jumlah agen, ubah tarif parkir, sesuaikan daya tarik toko
-            pesaing — dan lihat apa yang berubah.
+            pesaing, lalu lihat apa yang berubah.
           </p>
           <Link
             href="/simulation"
@@ -279,7 +280,7 @@ export default function Home() {
       </div>
 
       {/* Footer */}
-      <footer className="border-t border-white/[0.06]">
+      <footer className="border-t border-white/15">
         <div className="max-w-6xl mx-auto px-8 py-6 flex items-center justify-between">
           <span className="text-slate-600 text-xs">ParkSim</span>
           <span className="text-slate-700 text-xs font-mono">
