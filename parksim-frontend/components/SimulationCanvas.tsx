@@ -529,11 +529,6 @@ function EmptyScene() {
           {'Klik "Jalankan Simulasi" untuk memulai'}
         </Text>
       </Billboard>
-      <Billboard position={[0, 48, 0]}>
-        <Text fontSize={6} color="#4b5563" outlineColor="#fff" outlineWidth={0.3} anchorX="center">
-          {'WASD / ↑↓←→ = gerak  |  Q/E = naik/turun  |  scroll = zoom  |  drag = orbit'}
-        </Text>
-      </Billboard>
     </>
   );
 }

@@ -889,31 +889,11 @@ function ModelParamsSection() {
   const lastDay = data.abm_daily[data.abm_daily.length - 1];
   const avgAvers = lastDay.avg_parking_aversion;
   const avgRiskA = lastDay.avg_risk_a;
-  const distanceScale = mp.market_radius;
-  const distA = Math.hypot(cfg.store_a_x, cfg.store_a_y);
-  const distB = Math.hypot(cfg.store_b_x, cfg.store_b_y);
   const storeDistance = Math.hypot(
     cfg.store_b_x - cfg.store_a_x,
     cfg.store_b_y - cfg.store_a_y,
   );
-  const distanceScoreA = Math.min(1, distA / Math.max(1, distanceScale));
-  const distanceScoreB = Math.min(1, distB / Math.max(1, distanceScale));
-  const avgPurchase = lastDay.total_visits > 0
-    ? lastDay.total_revenue / lastDay.total_visits
-    : (mp.min_purchase_amount + mp.max_purchase_amount) / 2;
-  const feeRatio = mp.parking_fee / Math.max(1, avgPurchase);
-  const feePenalty = feeRatio > mp.fee_ratio_threshold ? 1 : 0;
-  const aversionPenalty = avgAvers > mp.parking_aversion_threshold ? 1 : 0;
-  const riskPenalty = avgRiskA > mp.risk_threshold ? 1 : 0;
-  const parkingBurden = (feePenalty + aversionPenalty + riskPenalty) / 3;
 
-  const scoreA = mp.attractiveness_A - distanceScoreA - parkingBurden;
-  const scoreB = mp.attractiveness_B - distanceScoreB;
-
-  const maxScore = Math.max(scoreA, scoreB);
-  const expA = Math.exp(scoreA - maxScore);
-  const expB = Math.exp(scoreB - maxScore);
-  const probA = expA / (expA + expB);
 
   const thresholds = [
     {
@@ -977,39 +957,6 @@ function ModelParamsSection() {
         ))}
       </div>
 
-      {/* Score calculation */}
-      <div className="bg-slate-50 border border-slate-200 rounded-md p-3 mb-3 space-y-1">
-        <p className="text-slate-500 text-[10px] font-semibold mb-1.5">
-          Contoh skor (agen rata-rata, hari terakhir)
-        </p>
-        <p className="text-slate-600 text-[10px] font-mono leading-relaxed">
-          burden_A = ({feePenalty} + {aversionPenalty} + {riskPenalty}) / 3
-          {" = "}
-          <span className="font-bold text-slate-800">{parkingBurden.toFixed(3)}</span>
-        </p>
-        <p className="text-slate-600 text-[10px] font-mono leading-relaxed">
-          score_A = {mp.attractiveness_A} - {distanceScoreA.toFixed(3)} -{" "}
-          {parkingBurden.toFixed(3)}
-          {" = "}
-          <span className="font-bold text-slate-800">{scoreA.toFixed(3)}</span>
-        </p>
-        <p className="text-slate-600 text-[10px] font-mono leading-relaxed">
-          score_B = {mp.attractiveness_B} - {distanceScoreB.toFixed(3)}
-          {" = "}
-          <span className="font-bold text-slate-800">{scoreB.toFixed(3)}</span>
-        </p>
-        <p className="text-slate-600 text-[10px] font-mono mt-1">
-          P(A) ={" "}
-          <span className="font-bold text-slate-800">
-            {(probA * 100).toFixed(1)}%
-          </span>
-          {"  "}
-          P(B) ={" "}
-          <span className="font-bold text-slate-800">
-            {((1 - probA) * 100).toFixed(1)}%
-          </span>
-        </p>
-      </div>
 
       {/* Extra params */}
       <div className="grid grid-cols-4 gap-2">
@@ -1391,18 +1338,6 @@ export function ChartsPanel() {
       {/* Playback */}
       <ChartPlaybackBar frame={frame} nDays={nDays} />
 
-      {/* Critical day notice */}
-      {criticalDay && frame >= criticalDay && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
-          <p className="text-amber-800 text-xs font-semibold">
-            Revenue Toko A mulai di bawah Toko B sejak hari ke-{criticalDay}
-          </p>
-          <p className="text-amber-600 text-[10px] mt-0.5 leading-snug">
-            Penalti parkir dan jarak membuat sebagian pelanggan berpindah
-            preferensi ke Toko B.
-          </p>
-        </div>
-      )}
 
       {/* Analisis Dampak */}
       <div>
