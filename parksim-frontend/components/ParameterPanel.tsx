@@ -19,22 +19,22 @@ const SLIDER_SECTIONS: { title: string; sliders: SliderConfig[] }[] = [
     title: 'Populasi & Durasi',
     sliders: [
       {
-        key: 'n_agents', label: 'Jumlah Agen', min: 50, max: 1000, step: 10,
+        key: 'n_agents', label: 'Jumlah Agen', min: 50, max: 500, step: 10,
         hint: 'Jumlah pelanggan dalam simulasi',
         format: (v) => `${v} orang`,
       },
       {
-        key: 'n_days', label: 'Durasi Simulasi', min: 10, max: 360, step: 5,
+        key: 'n_days', label: 'Durasi Simulasi', min: 10, max: 180, step: 5,
         hint: 'Lama simulasi berlangsung',
         format: (v) => `${v} hari`,
       },
       {
-        key: 'market_radius', label: 'Radius Pasar', min: 100, max: 4000, step: 50,
+        key: 'market_radius', label: 'Radius Pasar', min: 100, max: 2000, step: 50,
         hint: 'Radius area tempat tinggal agen tersebar',
         format: (v) => `${v} m`,
       },
       {
-        key: 'distance_to_B', label: 'Jarak A ke B', min: 50, max: 3000, step: 50,
+        key: 'distance_to_B', label: 'Jarak A ke B', min: 50, max: 1500, step: 50,
         hint: 'Jarak antara Toko A dan Toko B',
         format: (v) => `${v} m`,
       },
@@ -44,8 +44,8 @@ const SLIDER_SECTIONS: { title: string; sliders: SliderConfig[] }[] = [
     title: 'Parameter Toko',
     sliders: [
       {
-        key: 'parking_fee', label: 'Biaya Parkir', min: 0, max: 40000, step: 500,
-        hint: 'Biaya yang dipungut jukir di Toko A',
+        key: 'parking_fee', label: 'Biaya Parkir', min: 0, max: 20000, step: 500,
+        hint: 'Nominal parkir yang diminta jukir; dipakai untuk rasio fee / nilai belanja',
         format: (v) => `Rp ${(v / 1000).toFixed(1)}k`,
       },
       {
@@ -80,7 +80,7 @@ const SLIDER_SECTIONS: { title: string; sliders: SliderConfig[] }[] = [
       },
       {
         key: 'initial_risk_a', label: 'Risiko Awal Toko A', min: 0, max: 1, step: 0.05,
-        hint: 'Persepsi risiko awal agen terhadap Toko A sebelum simulasi',
+        hint: 'Persepsi risiko awal agen terhadap Toko A sebelum pengalaman atau WOM',
         format: (v) => v.toFixed(2),
       },
       {
@@ -94,18 +94,18 @@ const SLIDER_SECTIONS: { title: string; sliders: SliderConfig[] }[] = [
     title: 'Memori & Pengalaman',
     sliders: [
       {
-        key: 'memory_decay', label: 'Memory Decay', min: 0, max: 0.2, step: 0.005,
-        hint: 'Laju memudarnya perceived_risk_a per hari (mean reversion)',
+        key: 'memory_decay', label: 'Memory Decay', min: 0, max: 0.1, step: 0.005,
+        hint: 'Laju memudarnya perceived risk setiap hari menuju risiko awal',
         format: (v) => v.toFixed(3),
       },
       {
-        key: 'direct_experience_impact', label: 'Dampak Pengalaman Langsung', min: 0, max: 1, step: 0.05,
-        hint: 'Seberapa besar bad experience menaikkan perceived_risk_a',
+        key: 'direct_experience_impact', label: 'Dampak Pengalaman', min: 0, max: 1, step: 0.05,
+        hint: 'Kenaikan perceived risk setelah agen mengalami pengalaman buruk',
         format: (v) => v.toFixed(2),
       },
       {
         key: 'bad_experience_probability', label: 'Prob. Bad Experience', min: 0, max: 1, step: 0.05,
-        hint: 'Peluang agen mengalami bad experience saat ke Toko A (ada jukir)',
+        hint: 'Peluang pengalaman buruk saat agen memilih Toko A yang ada jukir',
         format: (v) => `${(v * 100).toFixed(0)}%`,
       },
     ],
@@ -115,48 +115,38 @@ const SLIDER_SECTIONS: { title: string; sliders: SliderConfig[] }[] = [
     sliders: [
       {
         key: 'wom_probability', label: 'Prob. Cerita', min: 0, max: 1, step: 0.05,
-        hint: 'Peluang agen yang bad experience menyebarkan cerita',
+        hint: 'Peluang agen yang mengalami bad experience menyebarkan cerita',
         format: (v) => `${(v * 100).toFixed(0)}%`,
       },
       {
-        key: 'wom_strength', label: 'Kekuatan WOM', min: 0, max: 1.0, step: 0.01,
-        hint: 'Besaran kenaikan aversion/risk pendengar WOM',
+        key: 'wom_strength', label: 'Kekuatan WOM', min: 0, max: 0.5, step: 0.01,
+        hint: 'Kenaikan perceived risk pada pendengar akibat satu cerita WOM',
         format: (v) => v.toFixed(2),
       },
       {
-        key: 'num_contacts', label: 'Jumlah Kontak', min: 1, max: 20, step: 1,
-        hint: 'Berapa agen yang diceritai satu storyteller per hari',
+        key: 'num_contacts', label: 'Jumlah Kontak', min: 1, max: 10, step: 1,
+        hint: 'Jumlah agen yang diceritai oleh satu storyteller',
         format: (v) => `${v} orang`,
       },
     ],
   },
   {
-    title: 'Bobot Skor',
+    title: 'Threshold Tallying',
     sliders: [
       {
-        key: 'weight_distance', label: 'Jarak', min: 0, max: 10, step: 0.1,
-        hint: 'Penalty jarak ternormalisasi; makin besar, toko yang jauh makin tidak menarik',
-        format: (v) => v.toFixed(1),
+        key: 'fee_ratio_threshold', label: 'Ambang Rasio Fee', min: 0, max: 1, step: 0.01,
+        hint: 'Fee parkir dianggap memberatkan jika fee / nilai belanja melewati ambang ini',
+        format: (v) => `${(v * 100).toFixed(0)}%`,
       },
       {
-        key: 'weight_parking_aversion', label: 'Aversion', min: 0, max: 10, step: 0.1,
-        hint: 'Penalty parking_aversion terhadap Toko A saat ada jukir',
-        format: (v) => v.toFixed(1),
+        key: 'parking_aversion_threshold', label: 'Ambang Aversion', min: 0, max: 1, step: 0.05,
+        hint: 'Agen dianggap sensitif terhadap jukir jika parking_aversion melewati ambang ini',
+        format: (v) => v.toFixed(2),
       },
       {
-        key: 'weight_parking_fee', label: 'Biaya Parkir', min: 0, max: 10, step: 0.1,
-        hint: 'Penalty biaya parkir relatif terhadap nominal belanja agen',
-        format: (v) => v.toFixed(1),
-      },
-      {
-        key: 'weight_risk', label: 'Risiko', min: 0, max: 10, step: 0.1,
-        hint: 'Penalty perceived_risk_a terhadap Toko A saat ada jukir',
-        format: (v) => v.toFixed(1),
-      },
-      {
-        key: 'weight_attractiveness', label: 'Daya Tarik', min: 0, max: 10, step: 0.1,
-        hint: 'Pengaruh attractiveness toko terhadap skor (positif)',
-        format: (v) => v.toFixed(1),
+        key: 'risk_threshold', label: 'Ambang Risiko', min: 0, max: 1, step: 0.05,
+        hint: 'Risiko yang dirasakan dihitung sebagai penalty jika melewati ambang ini',
+        format: (v) => v.toFixed(2),
       },
     ],
   },
@@ -404,7 +394,7 @@ export function ParameterPanel() {
       {/* Footer note */}
       <div className="mt-auto pt-3 border-t border-slate-200">
         <p className="text-slate-400 text-[9px] leading-relaxed">
-          Model: Mesa ABM · Weighted Scoring + Softmax<br />
+          Model: Mesa ABM · Tallying Score + Softmax<br />
           Backend: FastAPI · Python 3.11
         </p>
       </div>

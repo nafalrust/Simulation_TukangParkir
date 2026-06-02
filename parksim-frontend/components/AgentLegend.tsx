@@ -8,11 +8,6 @@ const ITEMS = [
     label: "Tidak belanja",
     sub: "kebutuhan belanja tidak terpenuhi",
   },
-  {
-    color: "#eab308",
-    label: "Bad experience",
-    sub: "ring kuning: terkena pungutan hari ini",
-  },
 ];
 
 export function AgentLegend() {
@@ -38,11 +33,6 @@ export function AgentLegend() {
             </div>
           </div>
         ))}
-      </div>
-      <div className="mt-2.5 pt-2 border-t border-slate-100">
-        <p className="text-slate-400 text-[8px]">
-          Arc kuning = WOM sedang menyebar
-        </p>
       </div>
     </div>
   );

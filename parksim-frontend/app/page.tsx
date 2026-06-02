@@ -8,13 +8,13 @@ const FEATURES = [
   },
   {
     label: "Softmax",
-    title: "Weighted Scoring",
-    desc: "Pilihan toko dihitung dari skor tertimbang (jarak, biaya, risiko, daya tarik) yang dikonversi ke probabilitas via fungsi softmax.",
+    title: "Tallying Score",
+    desc: "Pilihan toko dihitung dari daya tarik, jarak, dan tally penalty parkir berbasis ambang.",
   },
   {
-    label: "WOM",
-    title: "Word-of-Mouth Dynamics",
-    desc: "Agen yang mengalami pengalaman buruk menyebarkan cerita ke tetangganya, meningkatkan persepsi risiko kolektif terhadap Toko A secara organik.",
+    label: "Choice",
+    title: "Store Choice Dynamics",
+    desc: "Agen memilih antara Toko A dan Toko B berdasarkan skor utilitas yang dikonversi menjadi probabilitas.",
   },
 ];
 
@@ -49,8 +49,7 @@ export default function Home() {
         <p className="text-slate-400 text-base leading-relaxed max-w-xl mb-10">
           Model komputasional yang mensimulasikan bagaimana keberadaan juru
           parkir liar mempengaruhi keputusan belanja pelanggan dan seberapa
-          besar revenue yang hilang seiring waktu akibat efek memori dan
-          penyebaran informasi.
+          besar revenue yang hilang seiring waktu.
         </p>
 
         <div className="flex items-center gap-4">
@@ -96,7 +95,7 @@ export default function Home() {
             {
               step: "01",
               title: "Atur Parameter",
-              desc: "Biaya parkir, jumlah agen, radius pasar, bobot skor, dan lainnya.",
+              desc: "Jumlah agen, radius pasar, daya tarik toko, nominal belanja, dan ambang tallying.",
             },
             {
               step: "02",
@@ -106,7 +105,7 @@ export default function Home() {
             {
               step: "03",
               title: "Lihat Dinamika 3D",
-              desc: "Pantau pergerakan agen dan persebaran WOM di scene interaktif.",
+              desc: "Pantau pergerakan agen dan pilihan toko di scene interaktif.",
             },
             {
               step: "04",
@@ -133,7 +132,7 @@ export default function Home() {
       <footer className="border-t border-white/5 px-8 py-6 max-w-7xl mx-auto flex items-center justify-between">
         <span className="text-slate-600 text-xs">ParkSim</span>
         <span className="text-slate-700 text-xs">
-          Model: Mesa ABM · Weighted Scoring + Softmax · FastAPI
+          Model: Mesa ABM · Tallying Score + Softmax · FastAPI
         </span>
       </footer>
     </main>

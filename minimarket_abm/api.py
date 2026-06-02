@@ -54,19 +54,19 @@ class SimulateRequest(BaseModel):
     min_purchase_amount: int = Field(default=1_000, ge=1_000)
     max_purchase_amount: int = Field(default=500_000, ge=1_000)
     purchase_amount_distribution: list[tuple[int, int, float]] | None = None
-    shopping_proba: float = Field(default=0.35, ge=0.0, le=1.0)
+    shopping_proba: float = Field(default=0.5, ge=0.0, le=1.0)
 
     # Backward-compatible input name from the current frontend.
     # The new MiniMarket constructor uses shopping_proba.
     shopping_prob: float | None = Field(default=None, ge=0.0, le=1.0)
 
     # Agent attributes
-    parking_aversion: float = Field(default=0.4, ge=0.0, le=1.0)
+    parking_aversion: float = Field(default=0.5, ge=0.0, le=1.0)
     initial_risk_a: float = Field(default=0.0, ge=0.0, le=1.0)
 
     # Memory and bad experience
     memory_decay: float = Field(default=0.03, ge=0.0, le=0.1)
-    direct_experience_impact: float = Field(default=0.35, ge=0.0, le=1.0)
+    direct_experience_impact: float = Field(default=0.2, ge=0.0, le=1.0)
     bad_experience_probability: float = Field(default=0.5, ge=0.0, le=1.0)
 
     # Word of mouth
@@ -74,13 +74,10 @@ class SimulateRequest(BaseModel):
     wom_strength: float = Field(default=0.05, ge=0.0, le=0.5)
     num_contacts: int = Field(default=3, ge=1, le=10)
 
-    # Bobot skor. Pada agent.py terbaru, bobot penalty bernilai positif
-    # lalu dikurangkan dari skor utilitas.
-    weight_distance: float = Field(default=1.0, ge=0.0, le=10.0)
-    weight_parking_aversion: float = Field(default=1.2, ge=0.0, le=10.0)
-    weight_parking_fee: float = Field(default=2.0, ge=0.0, le=10.0)
-    weight_risk: float = Field(default=1.0, ge=0.0, le=10.0)
-    weight_attractiveness: float = Field(default=2.0, ge=0.0, le=10.0)
+    # Tallying thresholds
+    fee_ratio_threshold: float = Field(default=0.1, ge=0.0, le=1.0)
+    parking_aversion_threshold: float = Field(default=0.5, ge=0.0, le=1.0)
+    risk_threshold: float = Field(default=0.5, ge=0.0, le=1.0)
 
     seed: int = Field(default=42)
 
@@ -113,11 +110,9 @@ def build_model(req: SimulateRequest, has_illegal_parking: bool) -> MiniMarket:
         wom_probability=req.wom_probability,
         wom_strength=req.wom_strength,
         num_contacts=req.num_contacts,
-        weight_distance=req.weight_distance,
-        weight_parking_aversion=req.weight_parking_aversion,
-        weight_parking_fee=req.weight_parking_fee,
-        weight_risk=req.weight_risk,
-        weight_attractiveness=req.weight_attractiveness,
+        fee_ratio_threshold=req.fee_ratio_threshold,
+        parking_aversion_threshold=req.parking_aversion_threshold,
+        risk_threshold=req.risk_threshold,
         seed=req.seed,
     )
 
@@ -258,11 +253,9 @@ def simulate(req: SimulateRequest):
         "days": req.n_days,
         "market_radius": req.market_radius,
         "distance_to_B": req.distance_to_B,
-        "weight_distance": req.weight_distance,
-        "weight_parking_aversion": req.weight_parking_aversion,
-        "weight_parking_fee": req.weight_parking_fee,
-        "weight_risk": req.weight_risk,
-        "weight_attractiveness": req.weight_attractiveness,
+        "fee_ratio_threshold": req.fee_ratio_threshold,
+        "parking_aversion_threshold": req.parking_aversion_threshold,
+        "risk_threshold": req.risk_threshold,
         "parking_fee": req.parking_fee,
         "attractiveness_A": req.attractiveness_A,
         "attractiveness_B": req.attractiveness_B,
@@ -278,6 +271,10 @@ def simulate(req: SimulateRequest):
         "wom_probability": req.wom_probability,
         "wom_strength": req.wom_strength,
         "num_contacts": req.num_contacts,
+        "agent_distribution": "centered_circle",
+        "catchment_center_x": 0.0,
+        "catchment_center_y": 0.0,
+        "distance_scale": req.market_radius,
         "seed": req.seed,
     }
 
@@ -285,6 +282,11 @@ def simulate(req: SimulateRequest):
         "n_agents": req.n_agents,
         "n_days": req.n_days,
         "market_radius": req.market_radius,
+        "distance_to_B": req.distance_to_B,
+        "agent_distribution": "centered_circle",
+        "catchment_center_x": 0.0,
+        "catchment_center_y": 0.0,
+        "distance_scale": req.market_radius,
         "store_a_x": float(model_with.store_a.x),
         "store_a_y": float(model_with.store_a.y),
         "store_b_x": float(model_with.store_b.x),

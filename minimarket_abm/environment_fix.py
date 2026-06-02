@@ -31,15 +31,15 @@ class MiniMarket(mesa.Model):
         min_purchase_amount: int = 1_000,
         max_purchase_amount: int = 500_000,
         purchase_amount_distribution: list[tuple[int, int, float]] | None = None,
-        shopping_proba: float = 0.35,
+        shopping_proba: float = 0.5,
 
         # Agent attributes
-        parking_aversion: float = 0.4,
+        parking_aversion: float = 0.5,
         initial_risk_a: float = 0.0,
 
         # Memory and bad experience
         memory_decay: float = 0.03,
-        direct_experience_impact: float = 0.35,
+        direct_experience_impact: float = 0.2,
         bad_experience_probability: float = 0.5,
 
         # Word of mouth
@@ -47,12 +47,10 @@ class MiniMarket(mesa.Model):
         wom_strength: float = 0.05,
         num_contacts: int = 3,
 
-        # Score weights
-        weight_distance: float = 1.0,
-        weight_parking_aversion: float = 1.2,
-        weight_parking_fee: float = 2.0,
-        weight_risk: float = 1.0,
-        weight_attractiveness: float = 2.0,
+        # Tallying thresholds
+        fee_ratio_threshold: float = 0.1,
+        parking_aversion_threshold: float = 0.5,
+        risk_threshold: float = 0.5,
 
         seed: int = 42,
     ) -> None:
@@ -90,24 +88,22 @@ class MiniMarket(mesa.Model):
         self.wom_strength = wom_strength
         self.num_contacts = num_contacts
 
-        # Score weights
-        self.weight_distance = weight_distance
-        self.weight_parking_aversion = weight_parking_aversion
-        self.weight_parking_fee = weight_parking_fee
-        self.weight_risk = weight_risk
-        self.weight_attractiveness = weight_attractiveness
+        # Tallying thresholds
+        self.fee_ratio_threshold = fee_ratio_threshold
+        self.parking_aversion_threshold = parking_aversion_threshold
+        self.risk_threshold = risk_threshold
 
         # Store initialization
         self.store_a = Store(
             name="A",
-            x=0.0,
+            x=-distance_to_B / 2,
             y=0.0,
             has_illegal_parking=bool(has_illegal_parking),
         )
 
         self.store_b = Store(
             name="B",
-            x=distance_to_B,
+            x=distance_to_B / 2,
             y=0.0,
             has_illegal_parking=False,
         )
@@ -127,17 +123,14 @@ class MiniMarket(mesa.Model):
                 ),
             )
 
+            angle = self.random.uniform(0.0, 2.0 * math.pi)
+            radius = market_radius * math.sqrt(self.random.random())
+
             customer = CustomerAgent(
                 model=self,
                 customer_id=customer_id,
-                x=self.random.uniform(
-                    -market_radius,
-                    distance_to_B + market_radius,
-                ),
-                y=self.random.uniform(
-                    -market_radius,
-                    market_radius,
-                ),
+                x=radius * math.cos(angle),
+                y=radius * math.sin(angle),
                 parking_aversion=agent_parking_aversion,
             )
 

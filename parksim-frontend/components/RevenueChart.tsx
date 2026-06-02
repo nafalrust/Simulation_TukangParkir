@@ -63,8 +63,6 @@ export function RevenueChart() {
             <Legend wrapperStyle={{ fontSize: 10 }} />
             <Line dataKey="visits_a" name="Toko A" stroke="#f87171" dot={false} strokeWidth={2} />
             <Line dataKey="visits_b" name="Toko B" stroke="#4ade80" dot={false} strokeWidth={2} />
-            <Line dataKey="avg_risk_a" name="Avg Risk A" stroke="#a78bfa"
-              dot={false} strokeWidth={1.5} strokeDasharray="4 4" />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -88,9 +86,9 @@ export function RevenueChart() {
         </ResponsiveContainer>
       </div>
 
-      {/* Chart 3: WOM & Bad Exp */}
+      {/* Chart 3: Parking Aversion */}
       <div>
-        <SectionTitle title="📣 WOM & Bad Experience" />
+        <SectionTitle title="Parking Aversion" />
         <ResponsiveContainer width="100%" height={140}>
           <BarChart data={visibleData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
@@ -98,8 +96,7 @@ export function RevenueChart() {
             <YAxis stroke="#374151" tick={tickStyle} />
             <Tooltip {...CHART_STYLE} labelFormatter={(l) => `Hari ${l}`} />
             <Legend wrapperStyle={{ fontSize: 10 }} />
-            <Bar dataKey="wom_messages" name="WOM" fill="#fbbf24" opacity={0.8} />
-            <Bar dataKey="bad_experiences" name="Bad Exp" fill="#f97316" opacity={0.8} />
+            <Bar dataKey="avg_parking_aversion" name="Avg Aversion" fill="#0891b2" opacity={0.8} />
           </BarChart>
         </ResponsiveContainer>
       </div>

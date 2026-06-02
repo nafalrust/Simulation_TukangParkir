@@ -5,7 +5,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Billboard, Text } from '@react-three/drei';
 import * as THREE from 'three';
 import { useSimulationStore } from '@/lib/simulationStore';
-import { AgentSnapshot, AgentChoicesPerDay } from '@/lib/api';
+import { AgentSnapshot, AgentChoicesPerDay, WomEvent } from '@/lib/api';
 
 // Shared mutable ref: phase [0,1] kemajuan hari saat ini.
 // Diisi PlaybackController, dibaca AgentMesh — tanpa useState agar tidak re-render.
@@ -16,7 +16,7 @@ const C = {
   agentA:      '#dc2626',
   agentB:      '#16a34a',
   agentStay:   '#94a3b8',
-  agentBadExp: '#eab308',
+  wom:         '#f59e0b',
   storeAWall:  '#fca5a5',
   storeARoof:  '#ef4444',
   storeBWall:  '#86efac',
@@ -25,7 +25,6 @@ const C = {
   road:        '#2d2d2d',   // aspal gelap (bukan hitam pekat)
   roadLine:    '#ffffff',
   sidewalk:    '#eceff1',
-  womGold:     '#f59e0b',
   tree:        '#15803d',
   bg:          '#f0fdf4',
 };
@@ -258,7 +257,6 @@ function AgentMesh({ agent, choice, storeAPos, storeBPos }: {
   storeBPos: THREE.Vector3;
 }) {
   const groupRef = useRef<THREE.Group>(null!);
-  const ringRef  = useRef<THREE.Mesh>(null!);
 
   const home   = useMemo(() => new THREE.Vector3(agent.x, 0, agent.y), [agent.x, agent.y]);
   const target = useMemo(() => {
@@ -304,10 +302,6 @@ function AgentMesh({ agent, choice, storeAPos, storeBPos }: {
       groupRef.current.rotation.y = Math.atan2(dx, dz);
     }
 
-    if (ringRef.current && agent.had_bad_experience) {
-      const pulse = 1 + Math.sin(t * 5) * 0.2;
-      ringRef.current.scale.setScalar(pulse);
-    }
   });
 
   return (
@@ -324,184 +318,60 @@ function AgentMesh({ agent, choice, storeAPos, storeBPos }: {
         <circleGeometry args={[4, 16]} />
         <meshBasicMaterial color="#000" transparent opacity={0.07} />
       </mesh>
-      {agent.had_bad_experience && (
-        <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, -bodyH + 0.2, 0]}>
-          <ringGeometry args={[3.5, 5.5, 32]} />
-          <meshBasicMaterial color={C.agentBadExp} transparent opacity={0.85} />
-        </mesh>
-      )}
     </group>
   );
 }
 
-// ─── WOM System: partikel + garis arc — TANPA useState ────────────────────────
-// Semua mutable state disimpan di useRef agar tidak trigger React re-render.
-
-interface ParticleData {
-  active: boolean;
-  px: number; py: number; pz: number;
-  vx: number; vy: number; vz: number;
-  life: number;
-}
-
-interface WOMLineData {
-  active: boolean;
-  fromX: number; fromZ: number;
-  toX: number; toZ: number;
-  life: number;
-}
-
-const MAX_PARTICLES = 120;
-const MAX_LINES     = 20;
-
-function WOMSystem({ womCount, agentPositions }: {
-  womCount: number;
-  agentPositions: THREE.Vector3[];
-}) {
-  // Particle pool as ref (no setState)
-  const pool    = useRef<ParticleData[]>(
-    Array.from({ length: MAX_PARTICLES }, () => ({
-      active: false, px: 0, py: 0, pz: 0, vx: 0, vy: 0, vz: 0, life: 0,
-    })),
+// ─── WOM Ring ────────────────────────────────────────────────────────────────
+function WomRing({ event, index }: { event: WomEvent; index: number }) {
+  const ringRef = useRef<THREE.Mesh>(null!);
+  const linePoints = useMemo(
+    () => [
+      new THREE.Vector3(event.storyteller_x, 2.2, event.storyteller_y),
+      new THREE.Vector3(event.listener_x, 2.2, event.listener_y),
+    ],
+    [event.storyteller_x, event.storyteller_y, event.listener_x, event.listener_y],
   );
-  const lines   = useRef<WOMLineData[]>(
-    Array.from({ length: MAX_LINES }, () => ({
-      active: false, fromX: 0, fromZ: 0, toX: 0, toZ: 0, life: 0,
-    })),
-  );
-  // Three.js objects created once
-  const particleMeshes = useRef<THREE.Mesh[]>([]);
-  const lineMeshes     = useRef<THREE.Line[]>([]);
-  const chatDots       = useRef<THREE.Mesh[]>([]);
 
-  // Shared geometries & materials (created once)
-  const pGeo  = useMemo(() => new THREE.SphereGeometry(1.4, 5, 5), []);
-  const pMat  = useMemo(() => new THREE.MeshBasicMaterial({ color: C.womGold, transparent: true }), []);
-  const lMat  = useMemo(() => new THREE.LineBasicMaterial({ color: C.womGold, transparent: true }), []);
-  const dotGeo = useMemo(() => new THREE.SphereGeometry(2.2, 7, 7), []);
-  const dotMat = useMemo(() => new THREE.MeshBasicMaterial({ color: C.womGold, transparent: true }), []);
-
-  // Spawn helper — pure mutation, no setState
-  const spawnBurst = (count: number) => {
-    if (agentPositions.length === 0) return;
-    let spawned = 0;
-    for (let i = 0; i < pool.current.length && spawned < count; i++) {
-      const p = pool.current[i];
-      if (p.active) continue;
-      const origin = agentPositions[Math.floor(Math.random() * agentPositions.length)];
-      p.active = true;
-      p.px = origin.x; p.py = 10; p.pz = origin.z;
-      p.vx = (Math.random() - 0.5) * 35;
-      p.vy = Math.random() * 22 + 5;
-      p.vz = (Math.random() - 0.5) * 35;
-      p.life = 1.0;
-      spawned++;
-    }
-  };
-
-  const spawnLine = () => {
-    if (agentPositions.length < 2) return;
-    for (let i = 0; i < lines.current.length; i++) {
-      const l = lines.current[i];
-      if (l.active) continue;
-      const iA = Math.floor(Math.random() * agentPositions.length);
-      let iB   = Math.floor(Math.random() * agentPositions.length);
-      if (iB === iA) iB = (iA + 1) % agentPositions.length;
-      l.active = true;
-      l.fromX = agentPositions[iA].x; l.fromZ = agentPositions[iA].z;
-      l.toX   = agentPositions[iB].x; l.toZ   = agentPositions[iB].z;
-      l.life  = 1.0;
-      break;
-    }
-  };
-
-  // Detect new WOM events without setState
-  const womRef = useRef(womCount);
-  if (womCount !== womRef.current) {
-    const delta = womCount - womRef.current;
-    if (delta > 0 && agentPositions.length > 0) {
-      spawnBurst(Math.min(delta * 3, 20));
-      for (let i = 0; i < Math.min(delta, 4); i++) spawnLine();
-    }
-    womRef.current = womCount;
-  }
-
-  useFrame((_, dt) => {
-    // Update particles
-    pool.current.forEach((p, i) => {
-      const mesh = particleMeshes.current[i];
-      if (!mesh) return;
-      if (!p.active) { mesh.visible = false; return; }
-
-      p.px += p.vx * dt;
-      p.py += p.vy * dt;
-      p.pz += p.vz * dt;
-      p.vx *= 0.9;
-      p.vy -= 18 * dt;
-      p.vz *= 0.9;
-      p.life -= dt * 0.9;
-
-      if (p.life <= 0 || p.py < 0) { p.active = false; mesh.visible = false; return; }
-      mesh.visible = true;
-      mesh.position.set(p.px, p.py, p.pz);
-      (mesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0, p.life * 0.85);
-    });
-
-    // Update WOM lines
-    lines.current.forEach((l, i) => {
-      const line = lineMeshes.current[i];
-      const dot  = chatDots.current[i];
-      if (!line || !dot) return;
-      if (!l.active) { line.visible = false; dot.visible = false; return; }
-
-      l.life -= dt * 0.65;
-      if (l.life <= 0) { l.active = false; line.visible = false; dot.visible = false; return; }
-
-      const op = Math.max(0, l.life);
-      (line.material as THREE.LineBasicMaterial).opacity = op * 0.9;
-      (dot.material as THREE.MeshBasicMaterial).opacity  = op;
-
-      // Rebuild arc geometry each frame for the arc shape
-      const p0 = new THREE.Vector3(l.fromX, 8,  l.fromZ);
-      const p1 = new THREE.Vector3((l.fromX + l.toX) / 2, 35, (l.fromZ + l.toZ) / 2);
-      const p2 = new THREE.Vector3(l.toX,   8,  l.toZ);
-      const curve = new THREE.QuadraticBezierCurve3(p0, p1, p2);
-      const pts   = curve.getPoints(18);
-      line.geometry.setFromPoints(pts);
-      line.visible = true;
-
-      dot.position.set(l.fromX, 15, l.fromZ);
-      dot.visible = true;
-    });
+  useFrame(({ clock }) => {
+    if (!ringRef.current) return;
+    const phase = (clock.getElapsedTime() * 0.7 + index * 0.13) % 1;
+    const scale = 1 + phase * 2.4;
+    ringRef.current.scale.set(scale, scale, scale);
+    const material = ringRef.current.material as THREE.MeshBasicMaterial;
+    material.opacity = 0.42 * (1 - phase);
   });
 
   return (
     <group>
-      {/* Particle meshes */}
-      {Array.from({ length: MAX_PARTICLES }, (_, i) => (
-        <mesh key={`p-${i}`} ref={(el) => { if (el) particleMeshes.current[i] = el; }}
-          visible={false} geometry={pGeo} material={pMat} />
-      ))}
-      {/* Line objects */}
-      {Array.from({ length: MAX_LINES }, (_, i) => (
-        <group key={`l-${i}`}>
-          <primitive
-            object={(() => {
-              if (!lineMeshes.current[i]) {
-                const geo  = new THREE.BufferGeometry();
-                const line = new THREE.Line(geo, lMat.clone());
-                line.visible = false;
-                lineMeshes.current[i] = line;
-              }
-              return lineMeshes.current[i];
-            })()}
-            ref={(el: THREE.Line | null) => { if (el) lineMeshes.current[i] = el; }}
+      <line>
+        <bufferGeometry>
+          <bufferAttribute
+            attach="attributes-position"
+            args={[new Float32Array(linePoints.flatMap((p) => [p.x, p.y, p.z])), 3]}
           />
-          <mesh key={`d-${i}`}
-            ref={(el) => { if (el) chatDots.current[i] = el; }}
-            visible={false} geometry={dotGeo} material={dotMat} />
-        </group>
-      ))}
+        </bufferGeometry>
+        <lineBasicMaterial color={C.wom} transparent opacity={0.28} />
+      </line>
+      <mesh
+        ref={ringRef}
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[event.listener_x, 1.2, event.listener_y]}
+      >
+        <ringGeometry args={[8, 10, 48]} />
+        <meshBasicMaterial
+          color={C.wom}
+          transparent
+          opacity={0.38}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      <Billboard position={[event.listener_x, 18, event.listener_y]}>
+        <Text fontSize={4.5} color={C.wom} outlineColor="#fff" outlineWidth={0.25}>
+          WOM
+        </Text>
+      </Billboard>
     </group>
   );
 }
@@ -583,11 +453,13 @@ function Scene() {
   const activeDaily       = showNoJukir ? data.abm_daily_no_jukir           : data.abm_daily;
   const activeSnapshots   = showNoJukir ? data.agent_snapshots_no_jukir     : data.agent_snapshots;
   const activeChoicesPerDay = showNoJukir ? data.agent_choices_per_day_no_jukir : data.agent_choices_per_day;
+  const activeWomEventsPerDay = showNoJukir ? data.wom_events_per_day_no_jukir : data.wom_events_per_day;
   const { sim_config }    = data;
 
   const nDays   = activeDaily.length;
   const frame   = Math.min(currentFrame, nDays - 1);
   const dayData = activeDaily[frame];
+  const dayWomEvents = activeWomEventsPerDay[frame] ?? [];
 
   const storeAVec = new THREE.Vector3(sim_config.store_a_x, 0, sim_config.store_a_y);
   const storeBVec = new THREE.Vector3(sim_config.store_b_x, 0, sim_config.store_b_y);
@@ -596,8 +468,6 @@ function Scene() {
   const agentChoices: AgentChoice[] = activeSnapshots.map((a) =>
     resolveChoiceFromData(a.id, activeChoicesPerDay, frame)
   );
-
-  const agentVecs: THREE.Vector3[] = activeSnapshots.map((a) => new THREE.Vector3(a.x, 0, a.y));
 
   const storeZ = sim_config.store_a_y;
 
@@ -631,7 +501,9 @@ function Scene() {
         />
       ))}
 
-      <WOMSystem womCount={dayData.wom_messages} agentPositions={agentVecs} />
+      {dayWomEvents.slice(0, 120).map((event, i) => (
+        <WomRing key={event.id} event={event} index={i} />
+      ))}
 
       <DayClock frame={frame} nDays={nDays} posX={sim_config.store_a_x - 160} posZ={storeZ - 110} />
       <WASDCamera />

@@ -506,13 +506,14 @@ function DailyRevenueChart({ visibleData, criticalDay }: ChartProps) {
   );
 }
 
-// ─── Chart 4: WOM & Bad Experience ───────────────────────────────────────────
-function WOMChart({ visibleData }: ChartProps) {
+// ─── Chart 5: WOM & Bad Experience ───────────────────────────────────────────
+function WOMBadExperienceChart({ visibleData }: ChartProps) {
   const today = visibleData[visibleData.length - 1];
+
   return (
     <ChartCard
       title="WOM & Bad Experience Harian"
-      subtitle="Pesan word-of-mouth dan pengalaman buruk per hari"
+      subtitle="Jumlah pengalaman buruk dan pesan word-of-mouth per hari"
       badge={
         today && (
           <Badge variant="amber">
@@ -537,7 +538,7 @@ function WOMChart({ visibleData }: ChartProps) {
           <Legend wrapperStyle={{ fontSize: 11 }} />
           <Line
             dataKey="wom_messages"
-            name="WOM"
+            name="WOM Messages"
             stroke={COL.wom}
             dot={false}
             strokeWidth={1.5}
@@ -545,7 +546,7 @@ function WOMChart({ visibleData }: ChartProps) {
           />
           <Line
             dataKey="bad_experiences"
-            name="Bad Experience"
+            name="Bad Experiences"
             stroke={COL.bad}
             dot={false}
             strokeWidth={1.5}
@@ -558,7 +559,7 @@ function WOMChart({ visibleData }: ChartProps) {
   );
 }
 
-// ─── Chart 5: Risk & Aversion ─────────────────────────────────────────────────
+// ─── Chart 6: Risk & Aversion ────────────────────────────────────────────────
 function RiskAversionChart({ visibleData }: ChartProps) {
   const today = visibleData[visibleData.length - 1];
   const chartData = visibleData.map((d) => ({
@@ -569,11 +570,13 @@ function RiskAversionChart({ visibleData }: ChartProps) {
 
   return (
     <ChartCard
-      title="Rata-rata Perceived Risk & Parking Aversion"
-      subtitle="Dinamika persepsi risiko Toko A dan aversion agen (skala 0–1)"
+      title="Perceived Risk & Parking Aversion"
+      subtitle="Risiko terhadap Toko A berubah melalui pengalaman dan WOM; aversion adalah karakter awal agen"
       badge={
         today && (
-          <Badge variant="purple">Risk {today.avg_risk_a.toFixed(3)}</Badge>
+          <Badge variant="purple">
+            Risk {today.avg_risk_a.toFixed(3)}
+          </Badge>
         )
       }
     >
@@ -628,7 +631,7 @@ function RiskAversionChart({ visibleData }: ChartProps) {
   );
 }
 
-// ─── Chart 6: Market Share ────────────────────────────────────────────────────
+// ─── Chart 7: Market Share ────────────────────────────────────────────────────
 function MarketShareChart({ visibleData, criticalDay }: ChartProps) {
   const chartData = visibleData.map((d) => {
     const total = d.visits_a + d.visits_b || 1;
@@ -706,7 +709,7 @@ function MarketShareChart({ visibleData, criticalDay }: ChartProps) {
   );
 }
 
-// ─── Scatter: parking_aversion vs perceived_risk_a ───────────────────────────
+// ─── Scatter: parking_aversion per agent ─────────────────────────────────────
 function AgentScatterChart() {
   const data = useSimulationStore((s) => s.data);
   if (!data) return null;
@@ -714,13 +717,13 @@ function AgentScatterChart() {
   const byChoice = {
     A: data.agent_snapshots
       .filter((a) => a.choice === "A")
-      .map((a) => ({ x: a.parking_aversion, y: a.perceived_risk_a, z: 4 })),
+      .map((a) => ({ x: a.parking_aversion, y: a.id, z: 4 })),
     B: data.agent_snapshots
       .filter((a) => a.choice === "B")
-      .map((a) => ({ x: a.parking_aversion, y: a.perceived_risk_a, z: 4 })),
+      .map((a) => ({ x: a.parking_aversion, y: a.id, z: 4 })),
     none: data.agent_snapshots
       .filter((a) => a.choice === "none")
-      .map((a) => ({ x: a.parking_aversion, y: a.perceived_risk_a, z: 4 })),
+      .map((a) => ({ x: a.parking_aversion, y: a.id, z: 4 })),
   };
 
   const legendItems = [
@@ -732,7 +735,7 @@ function AgentScatterChart() {
   return (
     <ChartCard
       title="Distribusi Agen: Hari Terakhir"
-      subtitle="Parking Aversion vs Perceived Risk A per agen. Agen dengan aversion tinggi cenderung memilih Toko B."
+      subtitle="Parking aversion per agen berdasarkan pilihan terakhir."
     >
       {/* Legend custom di luar chart agar tidak tumpang tindih */}
       <div className="flex items-center gap-4 mb-3">
@@ -768,13 +771,12 @@ function AgentScatterChart() {
           <YAxis
             type="number"
             dataKey="y"
-            name="Perceived Risk A"
-            domain={[0, 1]}
+            name="Agent ID"
             stroke="#e2e8f0"
             tick={TICK}
           >
             <Label
-              value="Risk A"
+              value="Agent ID"
               angle={-90}
               position="insideLeft"
               style={{ fill: "#94a3b8", fontSize: 10 }}
@@ -795,9 +797,9 @@ function AgentScatterChart() {
                     </span>
                   </p>
                   <p className="text-slate-600">
-                    Risk A:{" "}
+                    Agent ID:{" "}
                     <span className="font-mono text-slate-800">
-                      {d.y.toFixed(3)}
+                      {d.y}
                     </span>
                   </p>
                 </div>
@@ -832,7 +834,7 @@ function AgentScatterChart() {
 function SummaryCards({ visibleData }: { visibleData: DayData[] }) {
   const totalRevA = visibleData.reduce((s, d) => s + d.revenue_a, 0);
   const totalRevB = visibleData.reduce((s, d) => s + d.revenue_b, 0);
-  const totalWOM = visibleData.reduce((s, d) => s + d.wom_messages, 0);
+  const totalWom = visibleData.reduce((s, d) => s + d.wom_messages, 0);
   const totalBad = visibleData.reduce((s, d) => s + d.bad_experiences, 0);
   const n = visibleData.length || 1;
   const avgVisitA = (
@@ -860,7 +862,7 @@ function SummaryCards({ visibleData }: { visibleData: DayData[] }) {
       />
       <StatCard label="Rata-rata kunjungan A / hari" value={avgVisitA} />
       <StatCard label="Rata-rata kunjungan B / hari" value={avgVisitB} />
-      <StatCard label="Total WOM" value={totalWOM.toLocaleString()} />
+      <StatCard label="Total WOM" value={totalWom.toLocaleString()} />
       <StatCard
         label="Total Bad Experience"
         value={totalBad.toLocaleString()}
@@ -886,93 +888,80 @@ function ModelParamsSection() {
 
   const lastDay = data.abm_daily[data.abm_daily.length - 1];
   const avgAvers = lastDay.avg_parking_aversion;
-  const avgRisk = lastDay.avg_risk_a;
-  const representativePurchase =
-    ((mp.min_purchase_amount ?? 1_000) + (mp.max_purchase_amount ?? 500_000)) / 2;
-  const parkingFeeScore = Math.min(1, mp.parking_fee / Math.max(1, representativePurchase));
-  const maxDistance = Math.hypot(mp.distance_to_B + mp.market_radius, mp.market_radius);
-  const distA = cfg.store_b_x / 2;
-  const distB = cfg.store_b_x / 2;
-  const distanceScoreA = Math.min(1, distA / Math.max(1, maxDistance));
-  const distanceScoreB = Math.min(1, distB / Math.max(1, maxDistance));
+  const avgRiskA = lastDay.avg_risk_a;
+  const distanceScale = mp.market_radius;
+  const distA = Math.hypot(cfg.store_a_x, cfg.store_a_y);
+  const distB = Math.hypot(cfg.store_b_x, cfg.store_b_y);
+  const storeDistance = Math.hypot(
+    cfg.store_b_x - cfg.store_a_x,
+    cfg.store_b_y - cfg.store_a_y,
+  );
+  const distanceScoreA = Math.min(1, distA / Math.max(1, distanceScale));
+  const distanceScoreB = Math.min(1, distB / Math.max(1, distanceScale));
+  const avgPurchase = lastDay.total_visits > 0
+    ? lastDay.total_revenue / lastDay.total_visits
+    : (mp.min_purchase_amount + mp.max_purchase_amount) / 2;
+  const feeRatio = mp.parking_fee / Math.max(1, avgPurchase);
+  const feePenalty = feeRatio > mp.fee_ratio_threshold ? 1 : 0;
+  const aversionPenalty = avgAvers > mp.parking_aversion_threshold ? 1 : 0;
+  const riskPenalty = avgRiskA > mp.risk_threshold ? 1 : 0;
+  const parkingBurden = (feePenalty + aversionPenalty + riskPenalty) / 3;
 
-  const scoreA =
-    mp.weight_attractiveness * mp.attractiveness_A -
-    mp.weight_distance * distanceScoreA -
-    mp.weight_parking_aversion * avgAvers -
-    mp.weight_parking_fee * parkingFeeScore -
-    mp.weight_risk * avgRisk;
-
-  const scoreB =
-    mp.weight_attractiveness * mp.attractiveness_B -
-    mp.weight_distance * distanceScoreB;
+  const scoreA = mp.attractiveness_A - distanceScoreA - parkingBurden;
+  const scoreB = mp.attractiveness_B - distanceScoreB;
 
   const maxScore = Math.max(scoreA, scoreB);
   const expA = Math.exp(scoreA - maxScore);
   const expB = Math.exp(scoreB - maxScore);
   const probA = expA / (expA + expB);
 
-  const weights = [
+  const thresholds = [
     {
-      label: "w_distance",
-      value: mp.weight_distance.toFixed(1),
-      note: "penalty jarak",
+      label: "Fee ratio",
+      value: `${(mp.fee_ratio_threshold * 100).toFixed(0)}%`,
+      note: "parking_fee / belanja",
     },
     {
-      label: "w_aversion",
-      value: mp.weight_parking_aversion.toFixed(1),
+      label: "Aversion",
+      value: mp.parking_aversion_threshold.toFixed(2),
       note: "parking_aversion",
     },
     {
-      label: "w_fee",
-      value: mp.weight_parking_fee.toFixed(1),
-      note: "fee / belanja",
-    },
-    {
-      label: "w_risk",
-      value: mp.weight_risk.toFixed(1),
+      label: "Risk",
+      value: mp.risk_threshold.toFixed(2),
       note: "perceived_risk",
-    },
-    {
-      label: "w_attract",
-      value: mp.weight_attractiveness.toFixed(1),
-      note: "attractiveness",
     },
   ];
 
   const extras = [
-    {
-      label: "Biaya Parkir",
-      value: `Rp ${(mp.parking_fee / 1000).toFixed(1)}k`,
-    },
     { label: "Attract A", value: mp.attractiveness_A.toFixed(2) },
     { label: "Attract B", value: mp.attractiveness_B.toFixed(2) },
-    { label: "WOM Prob", value: `${(mp.wom_probability * 100).toFixed(0)}%` },
-    { label: "WOM Strength", value: mp.wom_strength.toFixed(3) },
+    { label: "Avg Aversion", value: avgAvers.toFixed(3) },
+    { label: "Avg Risk A", value: avgRiskA.toFixed(3) },
     { label: "Memory Decay", value: mp.memory_decay.toFixed(3) },
-    {
-      label: "Direct Exp",
-      value: mp.direct_experience_impact?.toFixed(2) ?? "N/A",
-    },
+    { label: "Direct Exp", value: mp.direct_experience_impact.toFixed(2) },
     {
       label: "Bad Exp Prob",
-      value: `${((mp.bad_experience_probability ?? 0) * 100).toFixed(0)}%`,
+      value: `${(mp.bad_experience_probability * 100).toFixed(0)}%`,
     },
+    { label: "WOM Prob", value: `${(mp.wom_probability * 100).toFixed(0)}%` },
+    { label: "WOM Strength", value: mp.wom_strength.toFixed(2) },
+    { label: "Kontak WOM", value: `${mp.num_contacts}` },
     {
       label: "Prob. Belanja",
       value: `${((mp.shopping_proba ?? 0) * 100).toFixed(0)}%`,
     },
-    { label: "Jarak A→B", value: `${cfg.store_b_x.toFixed(0)} m` },
+    { label: "Jarak A→B", value: `${storeDistance.toFixed(0)} m` },
   ];
 
   return (
     <ChartCard
       title="Parameter Model"
-      subtitle="Bobot weighted scoring + softmax yang digunakan dalam simulasi ini"
+      subtitle="Threshold tallying + softmax yang digunakan dalam simulasi ini"
     >
-      {/* Weight grid */}
-      <div className="grid grid-cols-5 gap-2 mb-4">
-        {weights.map((w) => (
+      {/* Threshold grid */}
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        {thresholds.map((w) => (
           <div
             key={w.label}
             className="bg-slate-50 border border-slate-200 rounded-md px-3 py-2"
@@ -994,17 +983,18 @@ function ModelParamsSection() {
           Contoh skor (agen rata-rata, hari terakhir)
         </p>
         <p className="text-slate-600 text-[10px] font-mono leading-relaxed">
-          score_A = {mp.weight_attractiveness}×{mp.attractiveness_A} -{" "}
-          {mp.weight_distance}×{distanceScoreA.toFixed(3)} -{" "}
-          {mp.weight_parking_aversion}×{avgAvers.toFixed(3)} -{" "}
-          {mp.weight_parking_fee}×{parkingFeeScore.toFixed(4)} - {mp.weight_risk}×
-          {avgRisk.toFixed(3)}
+          burden_A = ({feePenalty} + {aversionPenalty} + {riskPenalty}) / 3
+          {" = "}
+          <span className="font-bold text-slate-800">{parkingBurden.toFixed(3)}</span>
+        </p>
+        <p className="text-slate-600 text-[10px] font-mono leading-relaxed">
+          score_A = {mp.attractiveness_A} - {distanceScoreA.toFixed(3)} -{" "}
+          {parkingBurden.toFixed(3)}
           {" = "}
           <span className="font-bold text-slate-800">{scoreA.toFixed(3)}</span>
         </p>
         <p className="text-slate-600 text-[10px] font-mono leading-relaxed">
-          score_B = {mp.weight_attractiveness}×{mp.attractiveness_B} -{" "}
-          {mp.weight_distance}×{distanceScoreB.toFixed(3)}
+          score_B = {mp.attractiveness_B} - {distanceScoreB.toFixed(3)}
           {" = "}
           <span className="font-bold text-slate-800">{scoreB.toFixed(3)}</span>
         </p>
@@ -1262,276 +1252,6 @@ function ComparisonVisitChart({ frame }: { frame: number }) {
   );
 }
 
-// ─── Comparison: WOM & Bad Exp ────────────────────────────────────────────────
-function ComparisonWOMChart({ frame }: { frame: number }) {
-  const data = useSimulationStore((s) => s.data);
-  if (!data) return null;
-
-  const withData = data.abm_daily.slice(0, frame + 1);
-  const withoutData = data.abm_daily_no_jukir.slice(0, frame + 1);
-
-  const merged = withData.map((d, i) => ({
-    day: d.day,
-    wom_dengan: d.wom_messages,
-    wom_tanpa: withoutData[i]?.wom_messages ?? 0,
-    bad_dengan: d.bad_experiences,
-    bad_tanpa: withoutData[i]?.bad_experiences ?? 0,
-  }));
-
-  const totalWomDengan = merged.reduce((s, d) => s + d.wom_dengan, 0);
-  const totalWomTanpa = merged.reduce((s, d) => s + d.wom_tanpa, 0);
-  const totalBadDengan = merged.reduce((s, d) => s + d.bad_dengan, 0);
-  const totalBadTanpa = merged.reduce((s, d) => s + d.bad_tanpa, 0);
-
-  return (
-    <ChartCard
-      title="WOM & Bad Experience: Ada Jukir vs Tanpa Jukir"
-      subtitle="Dampak sosial yang hilang jika jukir dihapus: penyebaran cerita negatif dan pengalaman buruk"
-    >
-      <p className="text-slate-400 text-[10px] font-medium mb-2">
-        Pesan WOM per hari
-      </p>
-      <ResponsiveContainer width="100%" height={170}>
-        <LineChart
-          data={merged}
-          margin={{ top: 4, right: 16, bottom: 4, left: 0 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
-          <XAxis dataKey="day" stroke="#e2e8f0" tick={TICK}>
-            <Label
-              value="Hari"
-              position="insideBottom"
-              offset={-2}
-              style={{ fill: "#cbd5e1", fontSize: 10 }}
-            />
-          </XAxis>
-          <YAxis stroke="#e2e8f0" tick={TICK} />
-          <Tooltip {...TOOLTIP_STYLE} labelFormatter={(l) => `Hari ke-${l}`} />
-          <Legend wrapperStyle={{ fontSize: 11 }} />
-          <Line
-            dataKey="wom_dengan"
-            name="WOM: Ada Jukir"
-            stroke={COL.wom}
-            dot={false}
-            strokeWidth={1.5}
-            isAnimationActive={false}
-          />
-          <Line
-            dataKey="wom_tanpa"
-            name="WOM: Tanpa Jukir"
-            stroke={COL.noJukir}
-            dot={false}
-            strokeWidth={1.5}
-            strokeDasharray="6 3"
-            isAnimationActive={false}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-
-      <p className="text-slate-400 text-[10px] font-medium mt-4 mb-2">
-        Bad Experience per hari
-      </p>
-      <ResponsiveContainer width="100%" height={170}>
-        <LineChart
-          data={merged}
-          margin={{ top: 4, right: 16, bottom: 4, left: 0 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
-          <XAxis dataKey="day" stroke="#e2e8f0" tick={TICK} />
-          <YAxis stroke="#e2e8f0" tick={TICK} />
-          <Tooltip {...TOOLTIP_STYLE} labelFormatter={(l) => `Hari ke-${l}`} />
-          <Legend wrapperStyle={{ fontSize: 11 }} />
-          <Line
-            dataKey="bad_dengan"
-            name="Bad Exp: Ada Jukir"
-            stroke={COL.bad}
-            dot={false}
-            strokeWidth={1.5}
-            isAnimationActive={false}
-          />
-          <Line
-            dataKey="bad_tanpa"
-            name="Bad Exp: Tanpa Jukir"
-            stroke={COL.noJukir}
-            dot={false}
-            strokeWidth={1.5}
-            strokeDasharray="6 3"
-            isAnimationActive={false}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-
-      <div className="grid grid-cols-4 gap-3 mt-4">
-        <StatCard
-          label="Total WOM (ada jukir)"
-          value={totalWomDengan.toLocaleString()}
-        />
-        <StatCard
-          label="Total WOM (tanpa jukir)"
-          value={totalWomTanpa.toLocaleString()}
-        />
-        <StatCard
-          label="Total Bad Exp (ada jukir)"
-          value={totalBadDengan.toLocaleString()}
-        />
-        <StatCard
-          label="Total Bad Exp (tanpa jukir)"
-          value={totalBadTanpa.toLocaleString()}
-        />
-      </div>
-    </ChartCard>
-  );
-}
-
-// ─── Comparison: Risk & Aversion ──────────────────────────────────────────────
-function ComparisonRiskChart({ frame }: { frame: number }) {
-  const data = useSimulationStore((s) => s.data);
-  if (!data) return null;
-
-  const withData = data.abm_daily.slice(0, frame + 1);
-  const withoutData = data.abm_daily_no_jukir.slice(0, frame + 1);
-
-  const merged = withData.map((d, i) => ({
-    day: d.day,
-    risk_dengan: d.avg_risk_a,
-    risk_tanpa: withoutData[i]?.avg_risk_a ?? 0,
-    avers_dengan: d.avg_parking_aversion,
-    avers_tanpa: withoutData[i]?.avg_parking_aversion ?? 0,
-  }));
-
-  const last = merged[merged.length - 1];
-
-  return (
-    <ChartCard
-      title="Perceived Risk & Parking Aversion: Ada Jukir vs Tanpa Jukir"
-      subtitle="Tanpa jukir, persepsi risiko dan aversion seharusnya mendekati nilai awal dan tidak bertumbuh"
-    >
-      <p className="text-slate-400 text-[10px] font-medium mb-2">
-        Avg Perceived Risk A (0–1)
-      </p>
-      <ResponsiveContainer width="100%" height={170}>
-        <AreaChart
-          data={merged}
-          margin={{ top: 4, right: 16, bottom: 4, left: 0 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
-          <XAxis dataKey="day" stroke="#e2e8f0" tick={TICK}>
-            <Label
-              value="Hari"
-              position="insideBottom"
-              offset={-2}
-              style={{ fill: "#cbd5e1", fontSize: 10 }}
-            />
-          </XAxis>
-          <YAxis
-            stroke="#e2e8f0"
-            tick={TICK}
-            domain={[0, 1]}
-            tickFormatter={(v) => v.toFixed(1)}
-          />
-          <Tooltip
-            {...TOOLTIP_STYLE}
-            formatter={(v, name) => [Number(v).toFixed(4), name]}
-            labelFormatter={(l) => `Hari ke-${l}`}
-          />
-          <Legend wrapperStyle={{ fontSize: 11 }} />
-          <ReferenceLine y={0.5} stroke="#e2e8f0" strokeDasharray="3 3">
-            <Label
-              value="0.5"
-              position="right"
-              style={{ fill: "#94a3b8", fontSize: 9 }}
-            />
-          </ReferenceLine>
-          <Area
-            dataKey="risk_dengan"
-            name="Risk: Ada Jukir"
-            stroke={COL.risk}
-            fill={COL.risk}
-            fillOpacity={0.08}
-            strokeWidth={1.5}
-            isAnimationActive={false}
-          />
-          <Area
-            dataKey="risk_tanpa"
-            name="Risk: Tanpa Jukir"
-            stroke={COL.noJukir}
-            fill={COL.noJukir}
-            fillOpacity={0.08}
-            strokeWidth={1.5}
-            strokeDasharray="6 3"
-            isAnimationActive={false}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
-
-      <p className="text-slate-400 text-[10px] font-medium mt-4 mb-2">
-        Avg Parking Aversion (0–1)
-      </p>
-      <ResponsiveContainer width="100%" height={170}>
-        <AreaChart
-          data={merged}
-          margin={{ top: 4, right: 16, bottom: 4, left: 0 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
-          <XAxis dataKey="day" stroke="#e2e8f0" tick={TICK} />
-          <YAxis
-            stroke="#e2e8f0"
-            tick={TICK}
-            domain={[0, 1]}
-            tickFormatter={(v) => v.toFixed(1)}
-          />
-          <Tooltip
-            {...TOOLTIP_STYLE}
-            formatter={(v, name) => [Number(v).toFixed(4), name]}
-            labelFormatter={(l) => `Hari ke-${l}`}
-          />
-          <Legend wrapperStyle={{ fontSize: 11 }} />
-          <Area
-            dataKey="avers_dengan"
-            name="Aversion: Ada Jukir"
-            stroke={COL.aversion}
-            fill={COL.aversion}
-            fillOpacity={0.08}
-            strokeWidth={1.5}
-            isAnimationActive={false}
-          />
-          <Area
-            dataKey="avers_tanpa"
-            name="Aversion: Tanpa Jukir"
-            stroke={COL.noJukir}
-            fill={COL.noJukir}
-            fillOpacity={0.08}
-            strokeWidth={1.5}
-            strokeDasharray="6 3"
-            isAnimationActive={false}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
-
-      {last && (
-        <div className="grid grid-cols-4 gap-3 mt-4">
-          <StatCard
-            label="Risk akhir (ada jukir)"
-            value={last.risk_dengan.toFixed(4)}
-          />
-          <StatCard
-            label="Risk akhir (tanpa jukir)"
-            value={last.risk_tanpa.toFixed(4)}
-          />
-          <StatCard
-            label="Aversion akhir (ada jukir)"
-            value={last.avers_dengan.toFixed(4)}
-          />
-          <StatCard
-            label="Aversion akhir (tanpa jukir)"
-            value={last.avers_tanpa.toFixed(4)}
-          />
-        </div>
-      )}
-    </ChartCard>
-  );
-}
-
 // ─── Comparison: Market Share ─────────────────────────────────────────────────
 function ComparisonMarketShareChart({ frame }: { frame: number }) {
   const data = useSimulationStore((s) => s.data);
@@ -1656,6 +1376,7 @@ export function ChartsPanel() {
   const nDays = allData.length;
   const frame = Math.min(currentFrame, nDays - 1);
   const visibleData = allData.slice(0, frame + 1);
+  const visibleDataNoJukir = data.abm_daily_no_jukir.slice(0, frame + 1);
   const criticalDay = findCriticalDay(allData);
   const chartProps: ChartProps = {
     visibleData,
@@ -1677,8 +1398,8 @@ export function ChartsPanel() {
             Revenue Toko A mulai di bawah Toko B sejak hari ke-{criticalDay}
           </p>
           <p className="text-amber-600 text-[10px] mt-0.5 leading-snug">
-            Akumulasi bad experience dan penyebaran WOM negatif telah menggeser
-            preferensi pelanggan ke Toko B.
+            Penalti parkir dan jarak membuat sebagian pelanggan berpindah
+            preferensi ke Toko B.
           </p>
         </div>
       )}
@@ -1690,8 +1411,6 @@ export function ChartsPanel() {
           <ComparisonRevenueChart frame={frame} />
           <ComparisonVisitChart frame={frame} />
           <ComparisonMarketShareChart frame={frame} />
-          <ComparisonWOMChart frame={frame} />
-          <ComparisonRiskChart frame={frame} />
         </div>
       </div>
 
@@ -1703,6 +1422,13 @@ export function ChartsPanel() {
         <SummaryCards visibleData={visibleData} />
       </div>
 
+      <div>
+        <SectionLabel>
+          Ringkasan Skenario Tanpa Jukir s.d. Hari {frame + 1}
+        </SectionLabel>
+        <SummaryCards visibleData={visibleDataNoJukir} />
+      </div>
+
       {/* Detail charts */}
       <div>
         <SectionLabel>Detail Dinamika: Skenario Ada Jukir</SectionLabel>
@@ -1711,7 +1437,7 @@ export function ChartsPanel() {
           <MarketShareChart {...chartProps} />
           <DailyRevenueChart {...chartProps} />
           <CumulativeRevenueChart {...chartProps} />
-          <WOMChart {...chartProps} />
+          <WOMBadExperienceChart {...chartProps} />
           <RiskAversionChart {...chartProps} />
         </div>
       </div>

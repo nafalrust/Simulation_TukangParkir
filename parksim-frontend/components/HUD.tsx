@@ -58,9 +58,7 @@ export function HUD() {
       <Chip label="Revenue B" value={fmtRp(d.revenue_b)} />
       <Chip label="Kunjungan A" value={d.visits_a} />
       <Chip label="Kunjungan B" value={d.visits_b} />
-      <Chip label="WOM" value={d.wom_messages} />
-      <Chip label="Bad Exp" value={d.bad_experiences} />
-      <Chip label="Avg Risk A" value={d.avg_risk_a.toFixed(3)} />
+      <Chip label="Avg Aversion" value={d.avg_parking_aversion.toFixed(3)} />
     </div>
   );
 }

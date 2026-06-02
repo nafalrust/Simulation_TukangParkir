@@ -105,28 +105,30 @@ class CustomerAgent(mesa.Agent):
         has_illegal_parking: bool,
         perceived_risk: float = 0.0,
     ) -> float:
+        # using tallying
         parking_flag = int(has_illegal_parking)
-        max_distance = math.hypot(
-            self.model.distance_to_B + self.model.market_radius,
-            self.model.market_radius,
-        )
 
+        distance_scale = self.model.market_radius
         distance_score = min(
             1.0,
-            distance / max(1.0, max_distance),
+            distance / max(1.0, distance_scale),
         )
-
-        parking_fee_score = min(
-            1.0,
-            self.model.parking_fee / max(1, self.purchase_amount),
+        parking_fee_ratio = self.model.parking_fee / max(1, self.purchase_amount)
+        fee_penalty = int(parking_fee_ratio > self.model.fee_ratio_threshold)
+        aversion_penalty = int(
+            self.parking_aversion > self.model.parking_aversion_threshold
         )
+        risk_penalty = int(perceived_risk > self.model.risk_threshold)
+        parking_burden = (
+            aversion_penalty
+            + fee_penalty
+            + risk_penalty
+        ) / 3
 
         score = (
-            self.model.weight_attractiveness * attractiveness
-            - self.model.weight_distance * distance_score
-            - self.model.weight_parking_aversion * self.parking_aversion * parking_flag
-            - self.model.weight_parking_fee * parking_fee_score * parking_flag
-            - self.model.weight_risk * perceived_risk * parking_flag
+            attractiveness
+            - distance_score
+            - parking_burden * parking_flag
         )
 
         return score
