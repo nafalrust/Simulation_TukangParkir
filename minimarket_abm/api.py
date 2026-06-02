@@ -53,9 +53,15 @@ class SimulateRequest(BaseModel):
     attractiveness_B: float = Field(default=0.5, ge=0.0, le=1.0)
 
     # Purchase behavior
-    min_purchase_amount: int = Field(default=1_000, ge=1_000)
-    max_purchase_amount: int = Field(default=500_000, ge=1_000)
-    purchase_amount_distribution: list[tuple[int, int, float]] | None = None
+    min_purchase_amount: int = Field(default=5_000, ge=1_000)
+    max_purchase_amount: int = Field(default=200_000, ge=1_000)
+    purchase_amount_distribution: list[tuple[int, int, float]] | None = Field(
+        default_factory=lambda: [
+            (5_000, 20_000, 0.25),
+            (20_000, 50_000, 0.5),
+            (50_000, 200_000, 0.25),
+        ],
+    )
     shopping_proba: float = Field(default=0.5, ge=0.0, le=1.0)
 
     # Backward-compatible input name from the current frontend.
@@ -67,14 +73,14 @@ class SimulateRequest(BaseModel):
     initial_risk_a: float = Field(default=0.0, ge=0.0, le=1.0)
 
     # Memory and bad experience
-    memory_decay: float = Field(default=0.03, ge=0.0, le=0.1)
-    direct_experience_impact: float = Field(default=0.2, ge=0.0, le=1.0)
+    memory_decay: float = Field(default=0.05, ge=0.0, le=0.1)
+    direct_experience_impact: float = Field(default=0.35, ge=0.0, le=1.0)
     bad_experience_probability: float = Field(default=0.5, ge=0.0, le=1.0)
 
     # Word of mouth
-    wom_probability: float = Field(default=0.3, ge=0.0, le=1.0)
-    wom_strength: float = Field(default=0.05, ge=0.0, le=0.5)
-    num_contacts: int = Field(default=3, ge=1, le=10)
+    wom_probability: float = Field(default=0.6, ge=0.0, le=1.0)
+    wom_strength: float = Field(default=0.08, ge=0.0, le=0.5)
+    num_contacts: int = Field(default=4, ge=1, le=10)
 
     # Tallying thresholds
     fee_ratio_threshold: float = Field(default=0.1, ge=0.0, le=1.0)

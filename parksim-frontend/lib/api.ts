@@ -15,6 +15,7 @@ export interface SimulateRequest {
   // Pembelian
   min_purchase_amount: number;
   max_purchase_amount: number;
+  purchase_amount_distribution: Array<[number, number, number]>;
 
   // Agen
   parking_aversion: number;
@@ -78,6 +79,7 @@ export interface ModelParams {
   attractiveness_B: number;
   min_purchase_amount: number;
   max_purchase_amount: number;
+  purchase_amount_distribution: Array<[number, number, number]> | null;
   shopping_proba: number;
   parking_aversion: number;
   initial_risk_a: number;
