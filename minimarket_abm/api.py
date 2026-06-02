@@ -7,6 +7,7 @@ POST /api/simulate  → jalankan dua skenario ABM (dengan jukir & tanpa jukir)
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -23,14 +24,15 @@ from environment_fix import MiniMarket
 
 app = FastAPI(title="ParkSim API", version="4.0.0")
 
+_raw_origins = os.environ.get(
+    "ALLOWED_ORIGINS",
+    "http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001",
+)
+_allowed_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:3001",
-    ],
+    allow_origins=_allowed_origins,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )

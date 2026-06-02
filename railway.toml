@@ -1,0 +1,7 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "uvicorn minimarket_abm.api:app --host 0.0.0.0 --port $PORT"
+restartPolicyType = "on-failure"
+restartPolicyMaxRetries = 3
